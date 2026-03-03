@@ -1,0 +1,18 @@
+---
+description: Core workflow and safety rails for all agent edits
+alwaysApply: true
+---
+
+# Core Workflow
+
+- Keep changes focused and small; avoid broad refactors unless requested.
+- Reuse existing module patterns before introducing new abstractions.
+- Run relevant checks before finalizing: `lint`, `typecheck`, and fast tests.
+- If checks fail, fix root causes instead of bypassing them.
+
+# Safety Rails
+
+- Never commit secrets or credentials; use `.env.example` for placeholders.
+- Preserve existing behavior unless the request explicitly changes behavior.
+- Prefer additive migrations and reversible data changes.
+- Update docs when scripts, workflows, or architecture expectations change.

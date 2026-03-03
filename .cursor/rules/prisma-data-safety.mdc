@@ -1,0 +1,17 @@
+---
+description: Prisma schema and data-change safety checks
+alwaysApply: true
+---
+
+# Prisma Guardrails
+
+- Treat `prisma/schema.prisma` changes as high impact and review downstream usage.
+- Prefer additive schema evolution over destructive field/table removals.
+- Regenerate client and verify affected flows after schema updates.
+
+# Data Safety
+
+- Keep seed/import scripts idempotent where possible.
+- Validate external data before writing to database.
+- Do not hardcode environment secrets in schema, scripts, or migrations.
+- Document any manual migration or rollback steps in PR notes/readme updates.

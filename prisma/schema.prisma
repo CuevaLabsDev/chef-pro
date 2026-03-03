@@ -1,0 +1,375 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── IdentityAccess Module ──────────────────────────────────────────
+
+enum Role {
+  fte
+  ops
+  ops_admin
+  kitchen_admin
+  chef
+  foh
+}
+
+enum PacketItemCategory {
+  entree
+  vegetarian_entree
+  vegan_entree
+  starches
+  vegetables
+  sides
+  desserts
+  back_up
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          Role     @default(chef)
+  roleSubtypeId String?
+  roleLabel     String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  locationAccess  UserLocationAccess[]
+  roleSubtype     RoleSubtype?            @relation(fields: [roleSubtypeId], references: [id], onDelete: SetNull)
+  permissionRules UserPermissionOverride[]
+  tastingSessions TastingSession[]
+  reviewActions   ReviewAction[]
+  auditEvents     AuditEvent[]
+  notifications   NotificationEvent[]
+  exportJobs      ExportJob[]
+  createdPackets  MenuSignagePacket[]     @relation("PacketCreatedBy")
+  assignedPackets MenuSignagePacket[]     @relation("PacketAssignedTo")
+}
+
+model UserLocationAccess {
+  id         String   @id @default(cuid())
+  userId     String
+  locationId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, locationId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  subtypeDefaults RoleSubtypePermission[]
+  userOverrides   UserPermissionOverride[]
+}
+
+model RoleSubtype {
+  id        String   @id @default(cuid())
+  role      Role
+  code      String
+  label     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  permissions RoleSubtypePermission[]
+
+  @@unique([role, code])
+}
+
+model RoleSubtypePermission {
+  id           String   @id @default(cuid())
+  subtypeId    String
+  permissionId String
+  isAllowed    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subtype    RoleSubtype @relation(fields: [subtypeId], references: [id], onDelete: Cascade)
+  permission Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([subtypeId, permissionId])
+}
+
+model UserPermissionOverride {
+  id           String   @id @default(cuid())
+  userId       String
+  permissionId String
+  isAllowed    Boolean
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+}
+
+// ─── Configuration Module ───────────────────────────────────────────
+
+model Location {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userAccess      UserLocationAccess[]
+  deadlineRules   DeadlineRule[]
+  tastingSessions TastingSession[]
+  signagePackets  MenuSignagePacket[]
+}
+
+model TastingPeriod {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  sortOrder Int
+  isActive  Boolean @default(true)
+
+  deadlineRules   DeadlineRule[]
+  tastingSessions TastingSession[]
+}
+
+model DeadlineRule {
+  id              String   @id @default(cuid())
+  locationId      String
+  tastingPeriodId String
+  deadlineTime    String   // HH:mm
+  daysOfWeek      String   @default("1,2,3,4,5") // comma-separated: 0=Sun..6=Sat
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  location      Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  tastingPeriod TastingPeriod @relation(fields: [tastingPeriodId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, tastingPeriodId])
+}
+
+model RatingSchema {
+  id        String   @id @default(cuid())
+  name      String
+  version   Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  questions RatingQuestion[]
+}
+
+model RatingQuestion {
+  id          String  @id @default(cuid())
+  schemaId    String
+  label       String
+  description String?
+  type        String  @default("star") // "star" | "select" | "text"
+  scaleMin    Int?
+  scaleMax    Int?
+  options     String  @default("") // comma-separated for select type
+  isRequired  Boolean @default(true)
+  sortOrder   Int
+
+  schema    RatingSchema    @relation(fields: [schemaId], references: [id], onDelete: Cascade)
+  responses RatingResponse[]
+}
+
+// ─── TastingCapture Module ──────────────────────────────────────────
+
+model TastingSession {
+  id                      String   @id @default(cuid())
+  date                    DateTime
+  locationId              String
+  tastingPeriodId         String
+  chefId                  String
+  managerName             String?
+  menuName                String?
+  status                  String   @default("draft") // "draft" | "submitted" | "reviewed" | "locked"
+  checklistMenuPackage    Boolean  @default(false)
+  checklistDigitalSignage Boolean  @default(false)
+  checklistFoodCards      Boolean  @default(false)
+  checklistNotes          String?
+  submittedAt             DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  location      Location      @relation(fields: [locationId], references: [id])
+  tastingPeriod TastingPeriod @relation(fields: [tastingPeriodId], references: [id])
+  chef          User          @relation(fields: [chefId], references: [id])
+  menuSignagePacket MenuSignagePacket?
+  items         TastingItem[]
+  reviewActions ReviewAction[]
+
+  @@unique([date, locationId, tastingPeriodId, chefId])
+}
+
+model TastingItem {
+  id                    String   @id @default(cuid())
+  sessionId             String
+  dishName              String
+  sortOrder             Int
+  temperatureCompliance String   @default("not_checked") // "compliant" | "non_compliant" | "not_checked"
+  adjustmentsNeeded     String?
+  ranOutTime            String?
+  serviceGapMins        Int?
+  backupNotes           String?
+  fteNotes              String?
+  photoUrl              String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  session TastingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  ratings RatingResponse[]
+}
+
+model RatingResponse {
+  id           String @id @default(cuid())
+  itemId       String
+  questionId   String
+  numericValue Float?
+  textValue    String?
+
+  item     TastingItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  question RatingQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([itemId, questionId])
+}
+
+model MenuSignagePacket {
+  id                      String   @id @default(cuid())
+  date                    DateTime
+  locationId              String
+  meal                    String
+  market                  String?
+  cafe                    String?
+  status                  String   @default("draft") // "draft" | "ready" | "in_service" | "completed"
+  checklistMenuPackage    Boolean  @default(false)
+  checklistDigitalSignage Boolean  @default(false)
+  checklistFoodCards      Boolean  @default(false)
+  checklistNotes          String?
+  backupReady             Boolean  @default(false)
+  backupUsed              Boolean  @default(false)
+  backupNotes             String?
+  createdById             String
+  assignedChefId          String?
+  tastingSessionId        String?  @unique
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  location      Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("PacketCreatedBy", fields: [createdById], references: [id])
+  assignedChef  User?          @relation("PacketAssignedTo", fields: [assignedChefId], references: [id])
+  tastingSession TastingSession? @relation(fields: [tastingSessionId], references: [id], onDelete: SetNull)
+  items         MenuSignageItem[]
+
+  @@unique([date, locationId, meal])
+  @@index([locationId, date])
+  @@index([status])
+}
+
+model MenuSignageItem {
+  id                String             @id @default(cuid())
+  packetId          String
+  category          PacketItemCategory
+  itemName          String
+  ingredients       String
+  theme             String?
+  dietTags          String             @default("") // comma-separated
+  allergenTags      String             @default("") // comma-separated
+  sortOrder         Int
+  isReadyForService Boolean            @default(false)
+  wasUsed           Boolean            @default(false)
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  packet MenuSignagePacket @relation(fields: [packetId], references: [id], onDelete: Cascade)
+
+  @@index([packetId, category])
+}
+
+// ─── ReviewCompliance Module ────────────────────────────────────────
+
+model ReviewAction {
+  id         String   @id @default(cuid())
+  sessionId  String
+  reviewerId String
+  fromStatus String
+  toStatus   String
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  session  TastingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  reviewer User           @relation(fields: [reviewerId], references: [id])
+}
+
+// ─── Audit Module (Cross-cutting) ───────────────────────────────────
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actorId    String
+  actorName  String
+  fieldName  String?
+  oldValue   String?
+  newValue   String?
+  metadata   String?  // JSON string
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+// ─── Notification Module (Cross-cutting) ────────────────────────────
+
+model NotificationEvent {
+  id                String   @id @default(cuid())
+  type              String
+  recipientId       String
+  channel           String   @default("in_app") // "email" | "google_chat" | "in_app"
+  subject           String
+  body              String
+  status            String   @default("pending") // "pending" | "sent" | "failed"
+  relatedEntityType String?
+  relatedEntityId   String?
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+
+  recipient User @relation(fields: [recipientId], references: [id])
+
+  @@index([recipientId, status])
+  @@index([createdAt])
+}
+
+// ─── Reporting Module (Cross-cutting) ───────────────────────────────
+
+model ExportJob {
+  id            String    @id @default(cuid())
+  type          String
+  format        String
+  filters       String    @default("{}") // JSON string
+  requestedById String
+  status        String    @default("queued") // "queued" | "processing" | "completed" | "failed"
+  fileUrl       String?
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  requestedBy User @relation(fields: [requestedById], references: [id])
+}
