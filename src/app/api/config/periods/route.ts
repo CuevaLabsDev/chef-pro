@@ -3,6 +3,8 @@ import { createTastingPeriodSchema } from "@/lib/validations";
 import { getTastingPeriods, createTastingPeriod } from "@/modules/configuration/service";
 import { requireAuth } from "@/modules/identity-access/middleware";
 import { hasPermission } from "@/modules/identity-access/service";
+import { handleServiceError } from "@/lib/api-errors";
+import { createAuditEvent } from "@/modules/audit/service";
 
 export async function GET() {
   const { error } = await requireAuth();
@@ -25,6 +27,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const period = await createTastingPeriod(parsed.data);
-  return NextResponse.json(period, { status: 201 });
+  try {
+    const period = await createTastingPeriod(parsed.data);
+    createAuditEvent({
+      entityType: "TastingPeriod",
+      entityId: period.id,
+      action: "created",
+      actorId: user.id,
+      actorName: user.name,
+    }).catch(() => {});
+    return NextResponse.json(period, { status: 201 });
+  } catch (err) {
+    return handleServiceError(err);
+  }
 }

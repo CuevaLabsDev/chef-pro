@@ -23,8 +23,6 @@ interface TastingDetail {
   id: string;
   date: string;
   status: string;
-  managerName?: string;
-  menuName?: string;
   checklistMenuPackage: boolean;
   checklistDigitalSignage: boolean;
   checklistFoodCards: boolean;
@@ -38,10 +36,7 @@ interface TastingDetail {
     dishName: string;
     temperatureCompliance: string;
     adjustmentsNeeded?: string;
-    ranOutTime?: string;
     serviceGapMins?: number;
-    backupNotes?: string;
-    fteNotes?: string;
     photoUrl?: string;
     ratings: {
       numericValue?: number;
@@ -103,7 +98,7 @@ export default function OpsReviewDetailPage() {
   if (loading || !tasting) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
@@ -112,8 +107,8 @@ export default function OpsReviewDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{tasting.location.name}</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">{tasting.location.name}</h1>
+          <p className="text-sm text-muted-foreground">
             {tasting.tastingPeriod.name} &middot; {new Date(tasting.date).toLocaleDateString()}{" "}
             &middot; Chef: {tasting.chef.name}
           </p>
@@ -153,25 +148,13 @@ export default function OpsReviewDetailPage() {
       <Card>
         <CardTitle>Session Info</CardTitle>
         <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-          {tasting.managerName && (
-            <div>
-              <dt className="text-gray-500">Manager</dt>
-              <dd className="font-medium">{tasting.managerName}</dd>
-            </div>
-          )}
-          {tasting.menuName && (
-            <div>
-              <dt className="text-gray-500">Menu</dt>
-              <dd className="font-medium">{tasting.menuName}</dd>
-            </div>
-          )}
           {tasting.menuSignagePacket && (
             <div>
-              <dt className="text-gray-500">Linked Packet</dt>
+              <dt className="text-muted-foreground">Linked Packet</dt>
               <dd className="font-medium">
                 <Link
-                  href={`/packets/${tasting.menuSignagePacket.id}`}
-                  className="text-indigo-600 hover:underline"
+                  href={`/menu-signage/${tasting.menuSignagePacket.id}`}
+                  className="text-primary hover:underline"
                 >
                   {tasting.menuSignagePacket.meal} ({tasting.menuSignagePacket.status})
                 </Link>
@@ -180,7 +163,7 @@ export default function OpsReviewDetailPage() {
           )}
           {tasting.submittedAt && (
             <div>
-              <dt className="text-gray-500">Submitted</dt>
+              <dt className="text-muted-foreground">Submitted</dt>
               <dd className="font-medium">{formatDateTime(tasting.submittedAt)}</dd>
             </div>
           )}
@@ -202,14 +185,14 @@ export default function OpsReviewDetailPage() {
         {tasting.items.map((item) => (
           <Card key={item.id}>
             <div className="flex items-start justify-between mb-2">
-              <h3 className="font-medium text-gray-900">{item.dishName}</h3>
+              <h3 className="font-medium text-foreground">{item.dishName}</h3>
               <Badge className={statusColor(item.temperatureCompliance)}>
                 {item.temperatureCompliance.replace("_", " ")}
               </Badge>
             </div>
             {item.ratings.map((r, i) => (
               <div key={i} className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-600">{r.question.label}</span>
+                <span className="text-sm text-muted-foreground">{r.question.label}</span>
                 {r.question.type === "star" ? (
                   <StarRating value={r.numericValue ?? 0} readonly size="sm" />
                 ) : (
@@ -238,12 +221,12 @@ export default function OpsReviewDetailPage() {
           <CardTitle>Review Actions</CardTitle>
           <div className="mt-3 space-y-2">
             {tasting.reviewActions.map((ra, i) => (
-              <div key={i} className="text-sm border-l-2 border-indigo-200 pl-3">
+              <div key={i} className="text-sm border-l-2 border-primary/20 pl-3">
                 <p className="font-medium">
                   {ra.reviewer.name}: {ra.fromStatus} &rarr; {ra.toStatus}
                 </p>
-                {ra.notes && <p className="text-gray-500">{ra.notes}</p>}
-                <p className="text-xs text-gray-400">{formatDateTime(ra.createdAt)}</p>
+                {ra.notes && <p className="text-muted-foreground">{ra.notes}</p>}
+                <p className="text-xs text-muted-foreground">{formatDateTime(ra.createdAt)}</p>
               </div>
             ))}
           </div>
@@ -260,11 +243,11 @@ export default function OpsReviewDetailPage() {
                   {e.actorName}: {e.action}
                 </p>
                 {e.fieldName && (
-                  <p className="text-gray-500">
+                  <p className="text-muted-foreground">
                     {e.fieldName}: {e.oldValue ?? "—"} &rarr; {e.newValue ?? "—"}
                   </p>
                 )}
-                <p className="text-xs text-gray-400">{formatDateTime(e.createdAt)}</p>
+                <p className="text-xs text-muted-foreground">{formatDateTime(e.createdAt)}</p>
               </div>
             ))}
           </div>

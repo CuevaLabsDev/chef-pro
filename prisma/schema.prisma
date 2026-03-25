@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // ─── IdentityAccess Module ──────────────────────────────────────────
@@ -13,6 +13,7 @@ enum Role {
   ops
   ops_admin
   kitchen_admin
+  kitchen_admin_manager
   chef
   foh
 }
@@ -24,7 +25,7 @@ enum PacketItemCategory {
   starches
   vegetables
   sides
-  desserts
+  pastry
   back_up
 }
 
@@ -43,6 +44,8 @@ model User {
   locationAccess  UserLocationAccess[]
   roleSubtype     RoleSubtype?            @relation(fields: [roleSubtypeId], references: [id], onDelete: SetNull)
   permissionRules UserPermissionOverride[]
+  kitchenAdminManagerLinks KitchenAdminManagerAssignment[] @relation("KitchenAdminManager")
+  managedKitchenAdminLinks KitchenAdminManagerAssignment[] @relation("KitchenAdminMember")
   tastingSessions TastingSession[]
   reviewActions   ReviewAction[]
   auditEvents     AuditEvent[]
@@ -50,6 +53,13 @@ model User {
   exportJobs      ExportJob[]
   createdPackets  MenuSignagePacket[]     @relation("PacketCreatedBy")
   assignedPackets MenuSignagePacket[]     @relation("PacketAssignedTo")
+  publishedPackets MenuSignagePacket[]    @relation("PacketPublishedBy")
+  readyForFinalReviewPackets MenuSignagePacket[] @relation("PacketReadyForFinalReviewBy")
+  finalizedForServicePackets MenuSignagePacket[] @relation("PacketFinalizedForServiceBy")
+  packetReviewSignatures PacketReviewSignature[] @relation("PacketSignatureSigner")
+  requestedAmendments    PacketAmendment[]       @relation("AmendmentRequester")
+  resolvedAmendments     PacketAmendment[]       @relation("AmendmentResolver")
+  pushSubscriptions      PushSubscription[]
 }
 
 model UserLocationAccess {
@@ -118,16 +128,56 @@ model UserPermissionOverride {
   @@unique([userId, permissionId])
 }
 
+model KitchenAdminManagerAssignment {
+  id             String   @id @default(cuid())
+  managerId      String
+  kitchenAdminId String
+  createdAt      DateTime @default(now())
+
+  manager      User @relation("KitchenAdminManager", fields: [managerId], references: [id], onDelete: Cascade)
+  kitchenAdmin User @relation("KitchenAdminMember", fields: [kitchenAdminId], references: [id], onDelete: Cascade)
+
+  @@unique([managerId, kitchenAdminId])
+  @@index([managerId])
+  @@index([kitchenAdminId])
+}
+
 // ─── Configuration Module ───────────────────────────────────────────
+
+model Campus {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  buildings Building[]
+}
+
+model Building {
+  id        String     @id @default(cuid())
+  name      String
+  campusId  String
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  campus    Campus     @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  locations Location[]
+
+  @@unique([campusId, name])
+}
 
 model Location {
   id          String   @id @default(cuid())
   name        String   @unique
   description String?
+  buildingId  String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  building        Building?            @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   userAccess      UserLocationAccess[]
   deadlineRules   DeadlineRule[]
   tastingSessions TastingSession[]
@@ -148,8 +198,12 @@ model DeadlineRule {
   id              String   @id @default(cuid())
   locationId      String
   tastingPeriodId String
-  deadlineTime    String   // HH:mm
-  daysOfWeek      String   @default("1,2,3,4,5") // comma-separated: 0=Sun..6=Sat
+  deadlineTime    String   // HH:mm -- tasting submission deadline
+  packetDueTime   String?  // HH:mm -- when signed packet must be returned to admin
+  tastingStart    String?  // HH:mm -- when tasting window opens
+  tastingEnd      String?  // HH:mm -- when tasting window closes
+  serviceStart    String?  // HH:mm -- when service begins
+  daysOfWeek      Int[]    @default([1, 2, 3, 4, 5])
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -178,7 +232,7 @@ model RatingQuestion {
   type        String  @default("star") // "star" | "select" | "text"
   scaleMin    Int?
   scaleMax    Int?
-  options     String  @default("") // comma-separated for select type
+  options     String[] @default([])
   isRequired  Boolean @default(true)
   sortOrder   Int
 
@@ -193,7 +247,7 @@ model TastingSession {
   date                    DateTime
   locationId              String
   tastingPeriodId         String
-  chefId                  String
+  chefId                  String?
   managerName             String?
   menuName                String?
   status                  String   @default("draft") // "draft" | "submitted" | "reviewed" | "locked"
@@ -207,7 +261,7 @@ model TastingSession {
 
   location      Location      @relation(fields: [locationId], references: [id])
   tastingPeriod TastingPeriod @relation(fields: [tastingPeriodId], references: [id])
-  chef          User          @relation(fields: [chefId], references: [id])
+  chef          User?         @relation(fields: [chefId], references: [id])
   menuSignagePacket MenuSignagePacket?
   items         TastingItem[]
   reviewActions ReviewAction[]
@@ -252,9 +306,8 @@ model MenuSignagePacket {
   date                    DateTime
   locationId              String
   meal                    String
-  market                  String?
-  cafe                    String?
-  status                  String   @default("draft") // "draft" | "ready" | "in_service" | "completed"
+  theme                   String?
+  status                  String   @default("draft") // "draft" | "published" | "for_final_review" | "finalized_for_service"
   checklistMenuPackage    Boolean  @default(false)
   checklistDigitalSignage Boolean  @default(false)
   checklistFoodCards      Boolean  @default(false)
@@ -264,15 +317,26 @@ model MenuSignagePacket {
   backupNotes             String?
   createdById             String
   assignedChefId          String?
+  publishedById           String?
+  publishedAt             DateTime?
+  readyForFinalReviewById String?
+  readyForFinalReviewAt   DateTime?
+  finalizedForServiceById String?
+  finalizedForServiceAt   DateTime?
   tastingSessionId        String?  @unique
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  location      Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  createdBy     User           @relation("PacketCreatedBy", fields: [createdById], references: [id])
-  assignedChef  User?          @relation("PacketAssignedTo", fields: [assignedChefId], references: [id])
-  tastingSession TastingSession? @relation(fields: [tastingSessionId], references: [id], onDelete: SetNull)
-  items         MenuSignageItem[]
+  location              Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdBy             User           @relation("PacketCreatedBy", fields: [createdById], references: [id])
+  assignedChef          User?          @relation("PacketAssignedTo", fields: [assignedChefId], references: [id])
+  publishedBy           User?          @relation("PacketPublishedBy", fields: [publishedById], references: [id])
+  readyForFinalReviewBy User?          @relation("PacketReadyForFinalReviewBy", fields: [readyForFinalReviewById], references: [id])
+  finalizedForServiceBy User?          @relation("PacketFinalizedForServiceBy", fields: [finalizedForServiceById], references: [id])
+  tastingSession        TastingSession? @relation(fields: [tastingSessionId], references: [id], onDelete: SetNull)
+  items                 MenuSignageItem[]
+  reviewSignatures      PacketReviewSignature[]
+  amendments            PacketAmendment[]
 
   @@unique([date, locationId, meal])
   @@index([locationId, date])
@@ -286,8 +350,8 @@ model MenuSignageItem {
   itemName          String
   ingredients       String
   theme             String?
-  dietTags          String             @default("") // comma-separated
-  allergenTags      String             @default("") // comma-separated
+  dietTags          String[]           @default([])
+  allergenTags      String[]           @default([])
   sortOrder         Int
   isReadyForService Boolean            @default(false)
   wasUsed           Boolean            @default(false)
@@ -295,9 +359,47 @@ model MenuSignageItem {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  packet MenuSignagePacket @relation(fields: [packetId], references: [id], onDelete: Cascade)
+  packet     MenuSignagePacket @relation(fields: [packetId], references: [id], onDelete: Cascade)
+  amendments PacketAmendment[]
 
   @@index([packetId, category])
+}
+
+model PacketReviewSignature {
+  id              String   @id @default(cuid())
+  packetId        String
+  signerId        String
+  signerNameInput String
+  signerRole      String
+  createdAt       DateTime @default(now())
+
+  packet MenuSignagePacket @relation(fields: [packetId], references: [id], onDelete: Cascade)
+  signer User              @relation("PacketSignatureSigner", fields: [signerId], references: [id], onDelete: Cascade)
+
+  @@unique([packetId, signerId])
+  @@index([packetId, createdAt])
+}
+
+model PacketAmendment {
+  id            String    @id @default(cuid())
+  packetId      String
+  type          String    // "item_change" | "backup_swap" | "item_removed" | "item_added"
+  reason        String    // "tasting_feedback" | "prep_change" | "service_change" | "correction"
+  description   String
+  itemId        String?
+  requestedById String
+  resolvedById  String?
+  status        String    @default("pending") // "pending" | "applied" | "dismissed"
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  packet      MenuSignagePacket @relation(fields: [packetId], references: [id], onDelete: Cascade)
+  item        MenuSignageItem?  @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  requestedBy User              @relation("AmendmentRequester", fields: [requestedById], references: [id])
+  resolvedBy  User?             @relation("AmendmentResolver", fields: [resolvedById], references: [id])
+
+  @@index([packetId, status])
+  @@index([packetId, createdAt])
 }
 
 // ─── ReviewCompliance Module ────────────────────────────────────────
@@ -327,7 +429,7 @@ model AuditEvent {
   fieldName  String?
   oldValue   String?
   newValue   String?
-  metadata   String?  // JSON string
+  metadata   Json?
   createdAt  DateTime @default(now())
 
   actor User @relation(fields: [actorId], references: [id])
@@ -358,13 +460,26 @@ model NotificationEvent {
   @@index([createdAt])
 }
 
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 // ─── Reporting Module (Cross-cutting) ───────────────────────────────
 
 model ExportJob {
   id            String    @id @default(cuid())
   type          String
   format        String
-  filters       String    @default("{}") // JSON string
+  filters       Json      @default("{}")
   requestedById String
   status        String    @default("queued") // "queued" | "processing" | "completed" | "failed"
   fileUrl       String?

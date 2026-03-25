@@ -7,7 +7,7 @@ export interface TastingSession {
   date: Date;
   locationId: string;
   tastingPeriodId: string;
-  chefId: string;
+  chefId: string | null;
   managerName?: string;
   menuName?: string;
   status: SessionStatus;
@@ -28,10 +28,7 @@ export interface TastingItem {
   sortOrder: number;
   temperatureCompliance: TemperatureCompliance;
   adjustmentsNeeded?: string;
-  ranOutTime?: string;
   serviceGapMins?: number;
-  backupNotes?: string;
-  fteNotes?: string;
   photoUrl?: string;
   ratings: RatingResponse[];
 }
@@ -49,8 +46,6 @@ export interface CreateTastingSessionInput {
   locationId: string;
   tastingPeriodId: string;
   menuSignagePacketId?: string;
-  managerName?: string;
-  menuName?: string;
   checklistMenuPackage?: boolean;
   checklistDigitalSignage?: boolean;
   checklistFoodCards?: boolean;
@@ -63,10 +58,7 @@ export interface CreateTastingItemInput {
   sortOrder: number;
   temperatureCompliance: TemperatureCompliance;
   adjustmentsNeeded?: string;
-  ranOutTime?: string;
   serviceGapMins?: number;
-  backupNotes?: string;
-  fteNotes?: string;
   ratings: CreateRatingResponseInput[];
 }
 
@@ -78,8 +70,6 @@ export interface CreateRatingResponseInput {
 
 export interface UpdateTastingSessionInput {
   menuSignagePacketId?: string | null;
-  managerName?: string;
-  menuName?: string;
   checklistMenuPackage?: boolean;
   checklistDigitalSignage?: boolean;
   checklistFoodCards?: boolean;

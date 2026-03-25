@@ -1,8 +1,5 @@
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
-
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+import { supabase, STORAGE_BUCKET } from "@/lib/supabase";
 
 export async function uploadFile(
   file: File,
@@ -14,18 +11,27 @@ export async function uploadFile(
   fileSize: number;
   fileType: string;
 }> {
-  await mkdir(UPLOAD_DIR, { recursive: true });
-
-  const ext = path.extname(file.name);
-  const storageKey = `${uuidv4()}${ext}`;
-  const filePath = path.join(UPLOAD_DIR, storageKey);
+  const ext = file.name.split(".").pop() ?? "bin";
+  const storageKey = `${uuidv4()}.${ext}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filePath, buffer);
+
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(storageKey, buffer, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    throw new Error(`Storage upload failed: ${error.message}`);
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storageKey);
 
   return {
     storageKey,
-    url: `/uploads/${storageKey}`,
+    url: publicUrl,
     fileName: file.name,
     fileSize: file.size,
     fileType: file.type,

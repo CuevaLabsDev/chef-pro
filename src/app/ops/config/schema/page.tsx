@@ -82,11 +82,11 @@ export default function SchemaConfigPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Rating Schema</h1>
+      <h1 className="text-2xl font-bold text-foreground">Rating Schema</h1>
 
       <Card>
         <CardTitle>Create New Schema Version</CardTitle>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Creating a new schema deactivates the previous one. Existing ratings are preserved.
         </p>
 
@@ -101,7 +101,7 @@ export default function SchemaConfigPage() {
 
           <div className="space-y-3">
             {questions.map((q, i) => (
-              <div key={i} className="flex items-end gap-2 p-3 bg-gray-50 rounded-lg">
+              <div key={i} className="flex items-end gap-2 p-3 bg-muted/50 rounded-lg">
                 <Input
                   id={`q-label-${i}`}
                   label="Question"
@@ -163,19 +163,19 @@ export default function SchemaConfigPage() {
       <Card>
         <CardTitle>Schema History ({schemas.length})</CardTitle>
         {loading ? (
-          <p className="text-sm text-gray-400 mt-3">Loading...</p>
+          <p className="text-sm text-muted-foreground mt-3">Loading...</p>
         ) : schemas.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-3">No schemas created yet</p>
+          <p className="text-sm text-muted-foreground mt-3">No schemas created yet</p>
         ) : (
           <div className="mt-4 divide-y">
             {schemas.map((s) => (
               <div key={s.id} className="py-3">
                 <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900">{s.name}</p>
-                  <span className="text-xs text-gray-400">v{s.version}</span>
+                  <p className="font-medium text-foreground">{s.name}</p>
+                  <span className="text-xs text-muted-foreground">v{s.version}</span>
                   {s.isActive && <Badge className="bg-green-100 text-green-700">Active</Badge>}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {s.questions.length} question{s.questions.length !== 1 ? "s" : ""}:{" "}
                   {s.questions.map((q) => q.label).join(", ")}
                 </p>

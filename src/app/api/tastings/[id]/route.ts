@@ -22,12 +22,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const canViewAll = hasAnyPermission(user, ["tastings.view_all", "reviews.manage"]);
-  const canViewOwn = hasAnyPermission(user, [
+  const canAccessTastings = hasAnyPermission(user, [
     "tastings.create",
     "tastings.edit",
     "tastings.submit",
   ]);
-  if (!canViewAll && !(canViewOwn && tasting.chef.id === user.id)) {
+  const isAtLocation = user.locationIds.includes(tasting.locationId);
+  if (!canViewAll && !(canAccessTastings && isAtLocation)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -45,11 +46,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const canViewAll = hasAnyPermission(user, ["tastings.view_all", "reviews.manage"]);
-  const isOwner = tasting.chef.id === user.id;
+  const isAtLocation = user.locationIds.includes(tasting.locationId);
   const body = await req.json();
 
   if (body.action === "submit") {
-    if (!hasPermission(user, "tastings.submit") || (!canViewAll && !isOwner)) {
+    if (!hasPermission(user, "tastings.submit") || (!canViewAll && !isAtLocation)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -67,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  if (!hasPermission(user, "tastings.edit") || (!canViewAll && !isOwner)) {
+  if (!hasPermission(user, "tastings.edit") || (!canViewAll && !isAtLocation)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

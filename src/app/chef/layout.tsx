@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { ChefNav } from "@/components/chef/nav";
+import { AppShell } from "@/components/shared/app-shell";
 import { getUserContextById, hasAnyPermission } from "@/modules/identity-access/service";
 import { getDefaultHomePath } from "@/modules/identity-access/middleware";
 
@@ -19,15 +19,8 @@ export default async function ChefLayout({ children }: { children: React.ReactNo
   if (!canAccessChef) redirect(getDefaultHomePath(user));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ChefNav
-        user={{
-          name: user.name,
-          role: user.role,
-          canReadPackets: user.permissionKeys.includes("packets.read"),
-        }}
-      />
-      <main className="max-w-lg mx-auto px-4 py-6 pb-24">{children}</main>
-    </div>
+    <AppShell user={{ name: user.name, role: user.role, permissionKeys: user.permissionKeys }}>
+      {children}
+    </AppShell>
   );
 }

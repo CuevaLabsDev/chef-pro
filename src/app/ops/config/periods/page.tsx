@@ -45,7 +45,7 @@ export default function PeriodsConfigPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Tasting Periods</h1>
+      <h1 className="text-2xl font-bold text-foreground">Tasting Periods</h1>
 
       <Card>
         <CardTitle>Add Period</CardTitle>
@@ -66,19 +66,19 @@ export default function PeriodsConfigPage() {
       <Card>
         <CardTitle>Current Periods ({periods.length})</CardTitle>
         {loading ? (
-          <p className="text-sm text-gray-400 mt-3">Loading...</p>
+          <p className="text-sm text-muted-foreground mt-3">Loading...</p>
         ) : periods.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-3">No periods configured yet</p>
+          <p className="text-sm text-muted-foreground mt-3">No periods configured yet</p>
         ) : (
           <div className="mt-4 divide-y">
             {periods.map((p) => (
               <div key={p.id} className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400 w-6">#{p.sortOrder + 1}</span>
-                  <p className="font-medium text-gray-900">{p.name}</p>
+                  <span className="text-xs text-muted-foreground w-6">#{p.sortOrder + 1}</span>
+                  <p className="font-medium text-foreground">{p.name}</p>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded-full ${p.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                  className={`text-xs px-2 py-1 rounded-full ${p.isActive ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}
                 >
                   {p.isActive ? "Active" : "Inactive"}
                 </span>

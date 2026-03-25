@@ -67,9 +67,39 @@ export const PERMISSION_CATALOG = [
     description: "Override packet workflow states and assignments.",
   },
   {
+    key: "packets.publish",
+    name: "Publish Packets",
+    description: "Publish packets so location teams can review them.",
+  },
+  {
+    key: "packets.finalize_service",
+    name: "Finalize Packets for Service",
+    description: "Finalize reviewed packets for service.",
+  },
+  {
+    key: "kitchen_admins.manage",
+    name: "Manage Kitchen Admin Team",
+    description: "Assign kitchen admins and location access.",
+  },
+  {
+    key: "kitchen_admins.view_as",
+    name: "View as Kitchen Admin",
+    description: "Use focused support view for kitchen admin workflows.",
+  },
+  {
     key: "permissions.manage",
     name: "Manage Permissions",
     description: "Manage subtype defaults and user permission overrides.",
+  },
+  {
+    key: "packets.request_amendment",
+    name: "Request Packet Amendment",
+    description: "Request changes to a signage packet (during tasting or service).",
+  },
+  {
+    key: "packets.resolve_amendment",
+    name: "Resolve Packet Amendment",
+    description: "Apply or dismiss a packet amendment request.",
   },
 ] as const;
 
@@ -92,6 +122,7 @@ const chefBasePermissions: PermissionKey[] = [
   "tastings.submit",
   "packets.read",
   "packets.execute",
+  "packets.request_amendment",
 ];
 
 export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
@@ -144,7 +175,24 @@ export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
     role: "kitchen_admin",
     code: "kitchen_admin",
     label: "Kitchen Admin",
-    permissionKeys: ["packets.read", "packets.manage_structure"],
+    permissionKeys: [
+      "packets.read",
+      "packets.manage_structure",
+      "packets.publish",
+      "packets.finalize_service",
+      "packets.resolve_amendment",
+    ],
+  },
+  {
+    role: "kitchen_admin_manager",
+    code: "kitchen_admin_manager",
+    label: "Kitchen Admin Manager",
+    permissionKeys: [
+      "packets.read",
+      "packets.manage_structure",
+      "kitchen_admins.manage",
+      "kitchen_admins.view_as",
+    ],
   },
   {
     role: "fte",

@@ -21,10 +21,7 @@ interface ItemData {
   sortOrder: number;
   temperatureCompliance: "compliant" | "non_compliant" | "not_checked";
   adjustmentsNeeded: string;
-  ranOutTime: string;
   serviceGapMins: number | undefined;
-  backupNotes: string;
-  fteNotes: string;
   ratings: { questionId: string; numericValue?: number; textValue?: string }[];
   photoUrl?: string;
 }
@@ -77,7 +74,7 @@ export function TastingItemForm({ item, index, questions, onChange, onRemove, ca
         <button
           type="button"
           onClick={onRemove}
-          className="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors"
+          className="absolute top-3 right-3 text-muted-foreground hover:text-red-500 transition-colors"
         >
           <svg
             className="w-5 h-5"
@@ -91,7 +88,7 @@ export function TastingItemForm({ item, index, questions, onChange, onRemove, ca
         </button>
       )}
 
-      <p className="text-xs font-medium text-gray-400 mb-3">Dish #{index + 1}</p>
+      <p className="text-xs font-medium text-muted-foreground mb-3">Dish #{index + 1}</p>
 
       <div className="space-y-3">
         <Input
@@ -106,7 +103,7 @@ export function TastingItemForm({ item, index, questions, onChange, onRemove, ca
           const rating = item.ratings.find((r) => r.questionId === q.id);
           return (
             <div key={q.id}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 {q.label}
                 {q.isRequired && <span className="text-red-500 ml-0.5">*</span>}
               </label>
@@ -156,42 +153,18 @@ export function TastingItemForm({ item, index, questions, onChange, onRemove, ca
           placeholder="Optional notes on adjustments..."
         />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            id={`runout-${index}`}
-            label="Ran Out Time"
-            value={item.ranOutTime}
-            onChange={(e) => updateField("ranOutTime", e.target.value)}
-            placeholder="e.g. 12:30"
-          />
-          <Input
-            id={`gap-${index}`}
-            label="Service Gap (min)"
-            type="number"
-            value={item.serviceGapMins ?? ""}
-            onChange={(e) =>
-              updateField("serviceGapMins", e.target.value ? parseInt(e.target.value) : undefined)
-            }
-          />
-        </div>
-
         <Input
-          id={`backup-${index}`}
-          label="Backup / Notes"
-          value={item.backupNotes}
-          onChange={(e) => updateField("backupNotes", e.target.value)}
-          placeholder="Name of backup dish or notes..."
-        />
-
-        <Input
-          id={`fte-${index}`}
-          label="FTE Notes"
-          value={item.fteNotes}
-          onChange={(e) => updateField("fteNotes", e.target.value)}
+          id={`gap-${index}`}
+          label="Service Gap (min)"
+          type="number"
+          value={item.serviceGapMins ?? ""}
+          onChange={(e) =>
+            updateField("serviceGapMins", e.target.value ? parseInt(e.target.value) : undefined)
+          }
         />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+          <label className="block text-sm font-medium text-foreground mb-1">Photo</label>
           {item.photoUrl ? (
             <div className="relative">
               <img src={item.photoUrl} alt="Dish" className="w-full h-40 object-cover rounded-lg" />
@@ -212,9 +185,9 @@ export function TastingItemForm({ item, index, questions, onChange, onRemove, ca
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-indigo-400 transition-colors">
+            <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary transition-colors">
               <svg
-                className="w-8 h-8 text-gray-400"
+                className="w-8 h-8 text-muted-foreground"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -231,7 +204,7 @@ export function TastingItemForm({ item, index, questions, onChange, onRemove, ca
                   d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"
                 />
               </svg>
-              <span className="mt-1 text-xs text-gray-500">
+              <span className="mt-1 text-xs text-muted-foreground">
                 {uploading ? "Uploading..." : "Tap to add photo"}
               </span>
               <input

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateUserPermissionsSchema } from "@/lib/validations";
 import { requireAuth } from "@/modules/identity-access/middleware";
 import {
+  clearManagedKitchenAdmins,
   getUserContextById,
   hasPermission,
+  setManagedKitchenAdmins,
   setUserPermissionOverrides,
   updateUserRoleProfile,
 } from "@/modules/identity-access/service";
@@ -22,7 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { role, roleSubtypeId, roleLabel, overrides } = parsed.data;
+  const { role, roleSubtypeId, roleLabel, managedKitchenAdminIds, overrides } = parsed.data;
 
   if (role !== undefined || roleSubtypeId !== undefined || roleLabel !== undefined) {
     await updateUserRoleProfile(id, {
@@ -34,6 +36,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (overrides) {
     await setUserPermissionOverrides(id, overrides);
+  }
+
+  if (managedKitchenAdminIds) {
+    const currentUser = await getUserContextById(id);
+    if (!currentUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const targetRole = role ?? currentUser.role;
+    if (targetRole === "kitchen_admin_manager") {
+      await setManagedKitchenAdmins(id, managedKitchenAdminIds);
+    } else {
+      await clearManagedKitchenAdmins(id);
+    }
   }
 
   const updated = await getUserContextById(id);

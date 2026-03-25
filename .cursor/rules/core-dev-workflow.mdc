@@ -5,9 +5,12 @@ alwaysApply: true
 
 # Core Workflow
 
+- Before starting work, read `docs/AGENT-INDEX.md` to find the relevant workflow and pattern docs.
+- Before adding features, follow the checklist in `docs/workflows/add-feature.md`.
+- Before creating API routes, follow the template in `docs/patterns/api-route.md`.
 - Keep changes focused and small; avoid broad refactors unless requested.
 - Reuse existing module patterns before introducing new abstractions.
-- Run relevant checks before finalizing: `lint`, `typecheck`, and fast tests.
+- Run relevant checks before finalizing: `lint`, `typecheck`, and `npm run test` for affected modules.
 - If checks fail, fix root causes instead of bypassing them.
 
 # Safety Rails
@@ -15,4 +18,4 @@ alwaysApply: true
 - Never commit secrets or credentials; use `.env.example` for placeholders.
 - Preserve existing behavior unless the request explicitly changes behavior.
 - Prefer additive migrations and reversible data changes.
-- Update docs when scripts, workflows, or architecture expectations change.
+- Update `docs/` when scripts, workflows, or architecture expectations change.

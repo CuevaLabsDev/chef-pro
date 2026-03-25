@@ -1,0 +1,23 @@
+---
+description: Production readiness standards for ChefPro
+alwaysApply: true
+---
+
+# Production Readiness
+
+- Never use filesystem for persistent storage; use Supabase Storage via `src/lib/supabase.ts`.
+- Compliance-critical mutations must write audit events in the same Prisma transaction.
+- Permission checks on the server must use freshly-fetched user context, never JWT cache.
+- All user-facing errors must be caught and shown via toast, never silent 500s.
+
+# Infrastructure
+
+- Database: PostgreSQL via Supabase (configured through `DATABASE_URL`).
+- File uploads: Supabase Storage bucket `tasting-photos`.
+- Schema changes: Always use `prisma migrate dev`, never `db push` in production.
+- Use native PostgreSQL types (Int[], String[], Json) instead of CSV string workarounds.
+
+# Data Fetching
+
+- Use SWR hooks (`src/lib/hooks/use-fetch.ts`) for client-side data, not raw useEffect+fetch.
+- Use `mutate()` from SWR after mutations for instant UI refresh.

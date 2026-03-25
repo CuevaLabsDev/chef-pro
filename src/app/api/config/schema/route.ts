@@ -7,6 +7,7 @@ import {
 } from "@/modules/configuration/service";
 import { requireAuth } from "@/modules/identity-access/middleware";
 import { hasPermission } from "@/modules/identity-access/service";
+import { handleServiceError } from "@/lib/api-errors";
 
 export async function GET(req: NextRequest) {
   const { error } = await requireAuth();
@@ -35,6 +36,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const schema = await createRatingSchema(parsed.data);
-  return NextResponse.json(schema, { status: 201 });
+  try {
+    const schema = await createRatingSchema(parsed.data);
+    return NextResponse.json(schema, { status: 201 });
+  } catch (err) {
+    return handleServiceError(err);
+  }
 }

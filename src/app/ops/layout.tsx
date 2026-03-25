@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { OpsNav } from "@/components/ops/nav";
-import {
-  getUserContextById,
-  hasAnyPermission,
-  hasPermission,
-} from "@/modules/identity-access/service";
+import { AppShell } from "@/components/shared/app-shell";
+import { getUserContextById, hasAnyPermission } from "@/modules/identity-access/service";
 import { getDefaultHomePath } from "@/modules/identity-access/middleware";
 
 export default async function OpsLayout({ children }: { children: React.ReactNode }) {
@@ -24,15 +20,8 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
   if (!canAccessOps) redirect(getDefaultHomePath(user));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <OpsNav
-        user={{
-          name: user.name,
-          role: user.role,
-          canManagePermissions: hasPermission(user, "permissions.manage"),
-        }}
-      />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">{children}</main>
-    </div>
+    <AppShell user={{ name: user.name, role: user.role, permissionKeys: user.permissionKeys }}>
+      {children}
+    </AppShell>
   );
 }

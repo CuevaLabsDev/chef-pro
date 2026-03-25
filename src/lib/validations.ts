@@ -18,19 +18,83 @@ export const createUserSchema = z.object({
 });
 
 export const createLocationSchema = z.object({
-  name: z.string().min(1, "Location name is required"),
+  name: z.string().trim().min(1, "Location name is required"),
   description: z.string().optional(),
+  buildingId: z.string().optional(),
 });
+
+export const updateLocationSchema = z
+  .object({
+    name: z.string().trim().min(1, "Location name is required").optional(),
+    description: z.string().nullable().optional(),
+    buildingId: z.string().nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      data.name !== undefined ||
+      data.description !== undefined ||
+      data.buildingId !== undefined ||
+      data.isActive !== undefined,
+    { message: "At least one field is required" }
+  );
+
+export const assignManagerSchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+});
+
+export const replaceLocationAccessSchema = z.object({
+  locationIds: z.array(z.string()).default([]),
+});
+
+export const updateManagerRoleSchema = z.object({
+  role: z.nativeEnum(Role).optional(),
+  roleSubtypeId: z.string().nullable().optional(),
+  roleLabel: z.string().nullable().optional(),
+});
+
+export const createCampusSchema = z.object({
+  name: z.string().trim().min(1, "Campus name is required"),
+});
+
+export const updateCampusSchema = z
+  .object({
+    name: z.string().trim().min(1, "Campus name is required").optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((data) => data.name !== undefined || data.isActive !== undefined, {
+    message: "At least one field is required",
+  });
+
+export const createBuildingSchema = z.object({
+  name: z.string().trim().min(1, "Building name is required"),
+  campusId: z.string().min(1, "Campus is required"),
+});
+
+export const updateBuildingSchema = z
+  .object({
+    name: z.string().trim().min(1, "Building name is required").optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((data) => data.name !== undefined || data.isActive !== undefined, {
+    message: "At least one field is required",
+  });
 
 export const createTastingPeriodSchema = z.object({
   name: z.string().min(1, "Period name is required"),
   sortOrder: z.number().int().min(0),
 });
 
+const hhmmRegex = /^\d{2}:\d{2}$/;
+
 export const createDeadlineRuleSchema = z.object({
   locationId: z.string().min(1),
   tastingPeriodId: z.string().min(1),
-  deadlineTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:mm format"),
+  deadlineTime: z.string().regex(hhmmRegex, "Must be HH:mm format"),
+  packetDueTime: z.string().regex(hhmmRegex, "Must be HH:mm format").optional(),
+  tastingStart: z.string().regex(hhmmRegex, "Must be HH:mm format").optional(),
+  tastingEnd: z.string().regex(hhmmRegex, "Must be HH:mm format").optional(),
+  serviceStart: z.string().regex(hhmmRegex, "Must be HH:mm format").optional(),
   daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1),
 });
 
@@ -61,10 +125,7 @@ export const tastingItemSchema = z.object({
   sortOrder: z.number().int().min(0),
   temperatureCompliance: z.enum(["compliant", "non_compliant", "not_checked"]),
   adjustmentsNeeded: z.string().optional(),
-  ranOutTime: z.string().optional(),
   serviceGapMins: z.number().int().optional(),
-  backupNotes: z.string().optional(),
-  fteNotes: z.string().optional(),
   ratings: z.array(ratingResponseSchema),
 });
 
@@ -73,8 +134,6 @@ export const createTastingSessionSchema = z.object({
   locationId: z.string().min(1),
   tastingPeriodId: z.string().min(1),
   menuSignagePacketId: z.string().optional(),
-  managerName: z.string().optional(),
-  menuName: z.string().optional(),
   checklistMenuPackage: z.boolean().optional(),
   checklistDigitalSignage: z.boolean().optional(),
   checklistFoodCards: z.boolean().optional(),
@@ -84,8 +143,6 @@ export const createTastingSessionSchema = z.object({
 
 export const updateTastingSessionSchema = z.object({
   menuSignagePacketId: z.string().nullable().optional(),
-  managerName: z.string().optional(),
-  menuName: z.string().optional(),
   checklistMenuPackage: z.boolean().optional(),
   checklistDigitalSignage: z.boolean().optional(),
   checklistFoodCards: z.boolean().optional(),
@@ -123,6 +180,7 @@ export const updateUserPermissionsSchema = z.object({
   role: z.nativeEnum(Role).optional(),
   roleSubtypeId: z.string().nullable().optional(),
   roleLabel: z.string().nullable().optional(),
+  managedKitchenAdminIds: z.array(z.string()).optional(),
   overrides: z
     .array(
       z.object({
@@ -137,7 +195,6 @@ export const menuPacketItemSchema = z.object({
   category: z.nativeEnum(PacketItemCategory),
   itemName: z.string().min(1, "Item name is required"),
   ingredients: z.string().min(1, "Ingredients are required"),
-  theme: z.string().optional(),
   dietTags: z.array(z.string()).default([]),
   allergenTags: z.array(z.string()).default([]),
   sortOrder: z.number().int().min(0),
@@ -146,13 +203,23 @@ export const menuPacketItemSchema = z.object({
   notes: z.string().optional(),
 });
 
+const menuPacketStatusSchema = z.enum([
+  "draft",
+  "published",
+  "for_final_review",
+  "finalized_for_service",
+  // legacy statuses kept for backward compatibility
+  "ready",
+  "in_service",
+  "completed",
+]);
+
 export const createMenuSignagePacketSchema = z.object({
   date: z.string().min(1, "Date is required"),
   locationId: z.string().min(1, "Location is required"),
   meal: z.string().min(1, "Meal is required"),
-  market: z.string().optional(),
-  cafe: z.string().optional(),
-  status: z.string().optional(),
+  theme: z.string().optional(),
+  status: menuPacketStatusSchema.optional(),
   assignedChefId: z.string().optional(),
   checklistMenuPackage: z.boolean().optional(),
   checklistDigitalSignage: z.boolean().optional(),
@@ -169,16 +236,15 @@ export const updateMenuSignagePacketStructureSchema = z.object({
   date: z.string().optional(),
   locationId: z.string().optional(),
   meal: z.string().optional(),
-  market: z.string().optional(),
-  cafe: z.string().optional(),
-  status: z.string().optional(),
+  theme: z.string().optional(),
+  status: menuPacketStatusSchema.optional(),
   assignedChefId: z.string().nullable().optional(),
   tastingSessionId: z.string().nullable().optional(),
   items: z.array(menuPacketItemSchema).optional(),
 });
 
 export const updateMenuSignagePacketExecutionSchema = z.object({
-  status: z.string().optional(),
+  status: menuPacketStatusSchema.optional(),
   checklistMenuPackage: z.boolean().optional(),
   checklistDigitalSignage: z.boolean().optional(),
   checklistFoodCards: z.boolean().optional(),
@@ -198,6 +264,45 @@ export const updateMenuSignagePacketExecutionSchema = z.object({
     .optional(),
 });
 
+export const addPacketSignatureSchema = z.object({
+  typedName: z.string().trim().min(1, "Signature name is required"),
+  acknowledged: z.boolean().refine((value) => value === true, "Please confirm before signing."),
+});
+
+export const publishMenuSignagePacketSchema = z.object({
+  note: z.string().optional(),
+});
+
+export const submitPacketForFinalReviewSchema = z.object({
+  note: z.string().optional(),
+});
+
+export const finalizePacketForServiceSchema = z.object({
+  typedName: z.string().trim().min(1, "Signature name is required"),
+  acknowledged: z.boolean().refine((value) => value === true, "Please confirm before finalizing."),
+  note: z.string().optional(),
+});
+
+export const createPacketAmendmentSchema = z.object({
+  type: z.enum(["item_change", "backup_swap", "item_removed", "item_added"]),
+  reason: z.enum(["tasting_feedback", "prep_change", "service_change", "correction"]),
+  description: z.string().min(1, "Description is required"),
+  itemId: z.string().optional(),
+});
+
+export const resolvePacketAmendmentSchema = z.object({
+  status: z.enum(["applied", "dismissed"]),
+});
+
+export const updateDeadlineRuleSchema = z.object({
+  deadlineTime: z.string().regex(hhmmRegex, "Must be HH:mm format").optional(),
+  packetDueTime: z.string().regex(hhmmRegex, "Must be HH:mm format").nullable().optional(),
+  tastingStart: z.string().regex(hhmmRegex, "Must be HH:mm format").nullable().optional(),
+  tastingEnd: z.string().regex(hhmmRegex, "Must be HH:mm format").nullable().optional(),
+  serviceStart: z.string().regex(hhmmRegex, "Must be HH:mm format").nullable().optional(),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).optional(),
+});
+
 export const updateMenuSignagePacketSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("structure"),
@@ -206,5 +311,21 @@ export const updateMenuSignagePacketSchema = z.discriminatedUnion("mode", [
   z.object({
     mode: z.literal("execution"),
     data: updateMenuSignagePacketExecutionSchema,
+  }),
+  z.object({
+    mode: z.literal("publish"),
+    data: publishMenuSignagePacketSchema,
+  }),
+  z.object({
+    mode: z.literal("submit_for_final_review"),
+    data: submitPacketForFinalReviewSchema,
+  }),
+  z.object({
+    mode: z.literal("add_signature"),
+    data: addPacketSignatureSchema,
+  }),
+  z.object({
+    mode: z.literal("finalize_for_service"),
+    data: finalizePacketForServiceSchema,
   }),
 ]);

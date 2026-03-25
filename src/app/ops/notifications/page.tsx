@@ -39,18 +39,18 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+        <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
         {unreadCount > 0 && <Badge className="bg-red-100 text-red-700">{unreadCount} unread</Badge>}
       </div>
 
       <Card>
         <CardTitle>
           Recent Alerts
-          {loading && <span className="ml-2 text-sm text-gray-400">loading...</span>}
+          {loading && <span className="ml-2 text-sm text-muted-foreground">loading...</span>}
         </CardTitle>
 
         {notifications.length === 0 && !loading ? (
-          <p className="text-sm text-gray-500 mt-3">No notifications yet</p>
+          <p className="text-sm text-muted-foreground mt-3">No notifications yet</p>
         ) : (
           <div className="mt-4 divide-y">
             {notifications.map((n) => (
@@ -59,16 +59,16 @@ export default function NotificationsPage() {
                   <Badge className={typeColors[n.type] ?? "bg-gray-100 text-gray-700"}>
                     {n.type.replace(/_/g, " ")}
                   </Badge>
-                  <span className="text-xs text-gray-400">{n.channel}</span>
+                  <span className="text-xs text-muted-foreground">{n.channel}</span>
                   <span
                     className={`text-xs ${n.status === "sent" ? "text-green-600" : "text-amber-600"}`}
                   >
                     {n.status}
                   </span>
                 </div>
-                <p className="text-sm font-medium text-gray-900">{n.subject}</p>
-                <p className="text-sm text-gray-600">{n.body}</p>
-                <p className="text-xs text-gray-400 mt-1">{formatDateTime(n.createdAt)}</p>
+                <p className="text-sm font-medium text-foreground">{n.subject}</p>
+                <p className="text-sm text-muted-foreground">{n.body}</p>
+                <p className="text-xs text-muted-foreground mt-1">{formatDateTime(n.createdAt)}</p>
               </div>
             ))}
           </div>

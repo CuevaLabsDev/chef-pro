@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface ComplianceEntry {
   locationId: string;
@@ -15,15 +16,51 @@ interface ComplianceEntry {
   complianceRate: number;
 }
 
+type QuickRange = "today" | "week" | "month" | "custom";
+
+function getToday() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function getWeekStart() {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay() + 1);
+  return d.toISOString().split("T")[0];
+}
+
+function getMonthStart() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split("T")[0];
+}
+
 export default function ReportsPage() {
-  const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split("T")[0];
-  });
-  const [dateTo, setDateTo] = useState(new Date().toISOString().split("T")[0]);
+  const [quickRange, setQuickRange] = useState<QuickRange>("today");
+  const [dateFrom, setDateFrom] = useState(getToday);
+  const [dateTo, setDateTo] = useState(getToday);
   const [compliance, setCompliance] = useState<ComplianceEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const applyQuickRange = useCallback((range: QuickRange) => {
+    setQuickRange(range);
+    const today = getToday();
+    switch (range) {
+      case "today":
+        setDateFrom(today);
+        setDateTo(today);
+        break;
+      case "week":
+        setDateFrom(getWeekStart());
+        setDateTo(today);
+        break;
+      case "month":
+        setDateFrom(getMonthStart());
+        setDateTo(today);
+        break;
+      case "custom":
+        break;
+    }
+    setLoading(true);
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -50,10 +87,17 @@ export default function ReportsPage() {
     window.open(`/api/reports?type=export&dateFrom=${dateFrom}&dateTo=${dateTo}`, "_blank");
   }
 
+  const quickRanges: { key: QuickRange; label: string }[] = [
+    { key: "today", label: "Today" },
+    { key: "week", label: "This Week" },
+    { key: "month", label: "This Month" },
+    { key: "custom", label: "Custom" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+        <h1 className="text-2xl font-bold text-foreground">Reports</h1>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={handleExport}>
             Export Tastings CSV
@@ -72,44 +116,62 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <Card>
-        <div className="flex gap-3">
-          <Input
-            id="rf"
-            label="From"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => {
-              setLoading(true);
-              setDateFrom(e.target.value);
-            }}
-          />
-          <Input
-            id="rt"
-            label="To"
-            type="date"
-            value={dateTo}
-            onChange={(e) => {
-              setLoading(true);
-              setDateTo(e.target.value);
-            }}
-          />
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+          <div className="flex gap-1">
+            {quickRanges.map((r) => (
+              <Button
+                key={r.key}
+                variant={quickRange === r.key ? "primary" : "ghost"}
+                size="sm"
+                className={cn(quickRange === r.key && "shadow-sm")}
+                onClick={() => applyQuickRange(r.key)}
+              >
+                {r.label}
+              </Button>
+            ))}
+          </div>
+
+          {quickRange === "custom" && (
+            <div className="flex gap-3">
+              <Input
+                id="rf"
+                label="From"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setLoading(true);
+                  setDateFrom(e.target.value);
+                }}
+              />
+              <Input
+                id="rt"
+                label="To"
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setLoading(true);
+                  setDateTo(e.target.value);
+                }}
+              />
+            </div>
+          )}
         </div>
       </Card>
 
-      <Card>
-        <CardTitle>
+      <Card className="p-4">
+        <CardTitle className="text-sm font-medium text-muted-foreground mb-4">
           Compliance Summary
-          {loading && <span className="ml-2 text-sm text-gray-400">loading...</span>}
+          {loading && <span className="ml-2 text-xs text-muted-foreground">loading...</span>}
         </CardTitle>
 
         {compliance.length === 0 && !loading ? (
-          <p className="text-sm text-gray-500 mt-3">No data for the selected range</p>
+          <p className="text-sm text-muted-foreground mt-3">No data for the selected range</p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-gray-500">
+                <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 font-medium">Location</th>
                   <th className="pb-2 font-medium">Period</th>
                   <th className="pb-2 font-medium text-right">Expected</th>
@@ -128,13 +190,14 @@ export default function ReportsPage() {
                     <td className="py-3 text-right">{c.totalReviewed}</td>
                     <td className="py-3 text-right">
                       <span
-                        className={`font-bold ${
+                        className={cn(
+                          "font-bold",
                           c.complianceRate >= 80
                             ? "text-green-600"
                             : c.complianceRate >= 50
                               ? "text-amber-600"
                               : "text-red-600"
-                        }`}
+                        )}
                       >
                         {c.complianceRate}%
                       </span>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import type { CreateAuditEventInput } from "./types";
 
 export async function createAuditEvent(input: CreateAuditEventInput) {
@@ -12,7 +13,7 @@ export async function createAuditEvent(input: CreateAuditEventInput) {
       fieldName: input.fieldName,
       oldValue: input.oldValue,
       newValue: input.newValue,
-      metadata: input.metadata ? JSON.stringify(input.metadata) : undefined,
+      metadata: input.metadata ? (input.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
     },
   });
 }

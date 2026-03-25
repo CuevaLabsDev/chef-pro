@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createTastingSessionSchema } from "@/lib/validations";
 import {
   createTastingSession,
-  getTastingSessionsByChef,
+  getTastingSessionsByLocations,
   getTastingSessionsFiltered,
 } from "@/modules/tasting-capture/service";
 import { hasAnyPermission, hasPermission } from "@/modules/identity-access/service";
@@ -30,10 +30,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (hasAnyPermission(user, ["tastings.create", "tastings.edit", "tastings.submit"])) {
-    const sessions = await getTastingSessionsByChef(user.id, {
+    const sessions = await getTastingSessionsByLocations(user.locationIds, {
       dateFrom: params.get("dateFrom") ?? undefined,
       dateTo: params.get("dateTo") ?? undefined,
-      locationId: params.get("locationId") ?? undefined,
     });
     return NextResponse.json(sessions);
   }

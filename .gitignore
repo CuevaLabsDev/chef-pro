@@ -43,5 +43,8 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# uploads
+# local SQLite (legacy)
+chefpro.db*
+
+# uploads (legacy local storage)
 /public/uploads

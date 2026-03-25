@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { sendPushToUser } from "./push-service";
 import type { SendNotificationInput } from "./types";
 
 export async function sendNotification(input: SendNotificationInput) {
@@ -15,15 +16,36 @@ export async function sendNotification(input: SendNotificationInput) {
     },
   });
 
-  // In-app notifications are immediately "sent"
   if (input.channel === "in_app") {
     await prisma.notificationEvent.update({
       where: { id: notification.id },
       data: { status: "sent", sentAt: new Date() },
     });
+
+    sendPushToUser(input.recipientId, {
+      title: input.subject,
+      body: input.body,
+      url:
+        input.relatedEntityType && input.relatedEntityId
+          ? buildEntityUrl(input.relatedEntityType, input.relatedEntityId)
+          : undefined,
+    }).catch(() => {});
   }
 
   return notification;
+}
+
+function buildEntityUrl(entityType: string, entityId: string): string {
+  switch (entityType) {
+    case "TastingSession":
+      return `/chef/tastings/${entityId}`;
+    case "MenuSignagePacket":
+      return `/menu-signage/${entityId}`;
+    case "PacketAmendment":
+      return `/menu-signage/amendments`;
+    default:
+      return "/";
+  }
 }
 
 export async function getUserNotifications(userId: string, limit = 20) {

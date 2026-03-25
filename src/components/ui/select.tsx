@@ -1,32 +1,33 @@
 "use client";
 
+import * as React from "react";
 import { cn } from "@/lib/utils";
-import { SelectHTMLAttributes, forwardRef } from "react";
+import { Label } from "@/components/ui/label";
 
-interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectProps extends React.ComponentProps<"select"> {
   label?: string;
   error?: string;
   options: { value: string; label: string }[];
   placeholder?: string;
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
+const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, id, options, placeholder, ...props }, ref) => {
     return (
-      <div className="space-y-1">
-        {label && (
-          <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-            {label}
-          </label>
-        )}
+      <div className="space-y-1.5">
+        {label && <Label htmlFor={id}>{label}</Label>}
         <select
           ref={ref}
           id={id}
+          data-slot="select"
           className={cn(
-            "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500",
-            error && "border-red-500",
+            "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:opacity-50 md:text-sm",
+            "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+            error &&
+              "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
             className
           )}
+          aria-invalid={error ? true : undefined}
           {...props}
         >
           {placeholder && <option value="">{placeholder}</option>}
@@ -36,10 +37,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             </option>
           ))}
         </select>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     );
   }
 );
 
 Select.displayName = "Select";
+
+export { Select };

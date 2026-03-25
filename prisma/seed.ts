@@ -1,109 +1,25 @@
 /**
- * Seeds the database with initial configuration.
+ * Seeds the database with permissions, role subtypes, and demo users.
  * Run via: npx tsx prisma/seed.ts
  */
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
-import path from "path";
 import {
   DEFAULT_SUBTYPE_DEFINITIONS,
   PERMISSION_CATALOG,
 } from "../src/modules/identity-access/rbac-config";
 
-const dbPath = path.join(process.cwd(), "chefpro.db");
-const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` });
-const prisma = new PrismaClient({ adapter });
-
-const LOCATIONS = [
-  "Urban Breakfast Hot Line",
-  "Urban Lunch",
-  "Urban FOH Deli, salad, beverage",
-  "Harvest",
-  "Qinghua Wok",
-  "Mezze",
-  "Cafe Cart",
-  "Urban Pastry",
-  "Urban Dinner",
-];
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
 async function main() {
   console.log("Seeding ChefPro database...\n");
 
-  const locations = [];
-  for (const name of LOCATIONS) {
-    const loc = await prisma.location.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-    locations.push(loc);
-    console.log(`  Location: ${loc.name}`);
-  }
-
-  const periods = [
-    { name: "Breakfast", sortOrder: 0 },
-    { name: "Lunch", sortOrder: 1 },
-    { name: "Dinner", sortOrder: 2 },
-  ];
-
-  const createdPeriods = [];
-  for (const p of periods) {
-    const period = await prisma.tastingPeriod.upsert({
-      where: { name: p.name },
-      update: {},
-      create: { name: p.name, sortOrder: p.sortOrder },
-    });
-    createdPeriods.push(period);
-    console.log(`  Period: ${period.name}`);
-  }
-
-  const existingSchema = await prisma.ratingSchema.findFirst({
-    where: { isActive: true },
-  });
-
-  if (!existingSchema) {
-    const schema = await prisma.ratingSchema.create({
-      data: {
-        name: "Standard Tasting v1",
-        isActive: true,
-        questions: {
-          create: [
-            {
-              label: "Flavor / Aroma",
-              type: "star",
-              scaleMin: 1,
-              scaleMax: 5,
-              isRequired: true,
-              sortOrder: 0,
-            },
-            {
-              label: "Texture",
-              type: "star",
-              scaleMin: 1,
-              scaleMax: 5,
-              isRequired: true,
-              sortOrder: 1,
-            },
-            {
-              label: "Presentation",
-              type: "star",
-              scaleMin: 1,
-              scaleMax: 5,
-              isRequired: true,
-              sortOrder: 2,
-            },
-          ],
-        },
-      },
-      include: { questions: true },
-    });
-    console.log(`  Schema: ${schema.name} (${schema.questions.length} questions)`);
-  } else {
-    console.log(`  Schema: already exists (${existingSchema.name})`);
-  }
-
   const passwordHash = await bcrypt.hash("chefpro123", 12);
+
   const permissionRecords = await Promise.all(
     PERMISSION_CATALOG.map((permission) =>
       prisma.permission.upsert({
@@ -173,21 +89,13 @@ async function main() {
     `  RBAC: ${permissionRecords.length} permissions, ${subtypeIdByRoleCode.size} subtypes`
   );
 
-  const allLocationAccess = locations.map((location) => ({
-    locationId: location.id,
-  }));
-
-  const chef = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "chef@chefpro.demo" },
     update: {
       name: "Demo Chef",
       passwordHash,
       role: "chef",
       roleSubtypeId: subtypeIdByRoleCode.get("chef:sous"),
-      locationAccess: {
-        deleteMany: {},
-        create: allLocationAccess,
-      },
       isActive: true,
     },
     create: {
@@ -196,24 +104,17 @@ async function main() {
       passwordHash,
       role: "chef",
       roleSubtypeId: subtypeIdByRoleCode.get("chef:sous"),
-      locationAccess: {
-        create: allLocationAccess,
-      },
     },
   });
-  console.log(`  User: ${chef.email} (chef/sous)`);
+  console.log("  User: chef@chefpro.demo (chef/sous)");
 
-  const kitchenAdmin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "kitchen@chefpro.demo" },
     update: {
       name: "Demo Kitchen Admin",
       passwordHash,
       role: "kitchen_admin",
       roleSubtypeId: subtypeIdByRoleCode.get("kitchen_admin:kitchen_admin"),
-      locationAccess: {
-        deleteMany: {},
-        create: allLocationAccess,
-      },
       isActive: true,
     },
     create: {
@@ -222,24 +123,36 @@ async function main() {
       passwordHash,
       role: "kitchen_admin",
       roleSubtypeId: subtypeIdByRoleCode.get("kitchen_admin:kitchen_admin"),
-      locationAccess: {
-        create: allLocationAccess,
-      },
     },
   });
-  console.log(`  User: ${kitchenAdmin.email} (kitchen_admin)`);
+  console.log("  User: kitchen@chefpro.demo (kitchen_admin)");
 
-  const foh = await prisma.user.upsert({
+  await prisma.user.upsert({
+    where: { email: "kitchen.manager@chefpro.demo" },
+    update: {
+      name: "Demo Kitchen Admin Manager",
+      passwordHash,
+      role: "kitchen_admin_manager",
+      roleSubtypeId: subtypeIdByRoleCode.get("kitchen_admin_manager:kitchen_admin_manager"),
+      isActive: true,
+    },
+    create: {
+      email: "kitchen.manager@chefpro.demo",
+      name: "Demo Kitchen Admin Manager",
+      passwordHash,
+      role: "kitchen_admin_manager",
+      roleSubtypeId: subtypeIdByRoleCode.get("kitchen_admin_manager:kitchen_admin_manager"),
+    },
+  });
+  console.log("  User: kitchen.manager@chefpro.demo (kitchen_admin_manager)");
+
+  await prisma.user.upsert({
     where: { email: "foh@chefpro.demo" },
     update: {
       name: "Demo FOH Manager",
       passwordHash,
       role: "foh",
       roleSubtypeId: subtypeIdByRoleCode.get("foh:foh_manager"),
-      locationAccess: {
-        deleteMany: {},
-        create: allLocationAccess,
-      },
       isActive: true,
     },
     create: {
@@ -248,24 +161,17 @@ async function main() {
       passwordHash,
       role: "foh",
       roleSubtypeId: subtypeIdByRoleCode.get("foh:foh_manager"),
-      locationAccess: {
-        create: allLocationAccess,
-      },
     },
   });
-  console.log(`  User: ${foh.email} (foh/foh_manager)`);
+  console.log("  User: foh@chefpro.demo (foh/foh_manager)");
 
-  const ops = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "ops@chefpro.demo" },
     update: {
       name: "Demo Ops",
       passwordHash,
       role: "ops",
       roleSubtypeId: subtypeIdByRoleCode.get("ops:ops"),
-      locationAccess: {
-        deleteMany: {},
-        create: allLocationAccess,
-      },
       isActive: true,
     },
     create: {
@@ -274,24 +180,17 @@ async function main() {
       passwordHash,
       role: "ops",
       roleSubtypeId: subtypeIdByRoleCode.get("ops:ops"),
-      locationAccess: {
-        create: allLocationAccess,
-      },
     },
   });
-  console.log(`  User: ${ops.email} (ops)`);
+  console.log("  User: ops@chefpro.demo (ops)");
 
-  const fte = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "fte@chefpro.demo" },
     update: {
       name: "Demo FTE Ops",
       passwordHash,
       role: "fte",
       roleSubtypeId: subtypeIdByRoleCode.get("fte:fte_ops"),
-      locationAccess: {
-        deleteMany: {},
-        create: allLocationAccess,
-      },
       isActive: true,
     },
     create: {
@@ -300,41 +199,9 @@ async function main() {
       passwordHash,
       role: "fte",
       roleSubtypeId: subtypeIdByRoleCode.get("fte:fte_ops"),
-      locationAccess: {
-        create: allLocationAccess,
-      },
     },
   });
-  console.log(`  User: ${fte.email} (fte/fte_ops)`);
-
-  const weekdays = "1,2,3,4,5";
-  const deadlineTimes: Record<string, string> = {
-    Breakfast: "09:30",
-    Lunch: "13:00",
-    Dinner: "19:00",
-  };
-
-  for (const loc of locations) {
-    for (const period of createdPeriods) {
-      const time = deadlineTimes[period.name] ?? "12:00";
-      await prisma.deadlineRule.upsert({
-        where: {
-          locationId_tastingPeriodId: {
-            locationId: loc.id,
-            tastingPeriodId: period.id,
-          },
-        },
-        update: {},
-        create: {
-          locationId: loc.id,
-          tastingPeriodId: period.id,
-          deadlineTime: time,
-          daysOfWeek: weekdays,
-        },
-      });
-    }
-  }
-  console.log(`  Deadline rules: ${locations.length * createdPeriods.length} created/verified`);
+  console.log("  User: fte@chefpro.demo (fte/fte_ops)");
 
   console.log("\nSeed complete!");
   await prisma.$disconnect();

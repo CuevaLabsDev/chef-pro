@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
             new Date(s.date).toISOString().split("T")[0],
             s.location.name,
             s.tastingPeriod.name,
-            s.chef.name,
+            s.chef?.name ?? "Unassigned",
             `"${item.dishName.replace(/"/g, '""')}"`,
             s.status,
             ratings[0]?.numericValue ?? "",

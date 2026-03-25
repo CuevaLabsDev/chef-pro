@@ -45,11 +45,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as unknown as Record<string, unknown>).role;
-        token.roleSubtypeId = (user as unknown as Record<string, unknown>).roleSubtypeId;
-        token.roleLabel = (user as unknown as Record<string, unknown>).roleLabel;
-        token.locationIds = (user as unknown as Record<string, unknown>).locationIds;
-        token.permissionKeys = (user as unknown as Record<string, unknown>).permissionKeys;
+      }
+      const ctx = await getUserContextById(token.id as string);
+      if (ctx) {
+        token.role = ctx.role;
+        token.roleSubtypeId = ctx.roleSubtypeId;
+        token.roleLabel = ctx.roleLabel;
+        token.locationIds = ctx.locationIds;
+        token.permissionKeys = ctx.permissionKeys;
       }
       return token;
     },

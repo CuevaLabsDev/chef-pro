@@ -1,36 +1,41 @@
 "use client";
 
+import * as React from "react";
 import { cn } from "@/lib/utils";
-import { InputHTMLAttributes, forwardRef } from "react";
+import { Label } from "@/components/ui/label";
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends React.ComponentProps<"input"> {
   label?: string;
   error?: string;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, id, ...props }, ref) => {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, label, error, id, type, ...props }, ref) => {
     return (
-      <div className="space-y-1">
-        {label && (
-          <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-            {label}
-          </label>
-        )}
+      <div className="space-y-1.5">
+        {label && <Label htmlFor={id}>{label}</Label>}
         <input
-          ref={ref}
+          type={type}
           id={id}
+          ref={ref}
+          data-slot="input"
           className={cn(
-            "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500",
-            error && "border-red-500 focus:border-red-500 focus:ring-red-500",
+            "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:opacity-50 md:text-sm",
+            "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+            "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+            error &&
+              "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
             className
           )}
+          aria-invalid={error ? true : undefined}
           {...props}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     );
   }
 );
 
 Input.displayName = "Input";
+
+export { Input };

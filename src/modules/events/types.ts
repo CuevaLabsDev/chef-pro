@@ -7,7 +7,11 @@ export type DomainEventType =
   | "session_unlocked"
   | "deadline_missed"
   | "item_photo_uploaded"
-  | "config_updated";
+  | "config_updated"
+  | "packet_amendment_requested"
+  | "packet_amendment_resolved"
+  | "backup_sign_requested"
+  | "tasting_score_notable";
 
 export interface DomainEvent<T = unknown> {
   id: string;

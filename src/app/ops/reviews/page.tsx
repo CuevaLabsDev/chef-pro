@@ -82,7 +82,7 @@ export default function ReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Review Queue</h1>
+      <h1 className="text-2xl font-bold text-foreground">Review Queue</h1>
 
       <Card>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -150,16 +150,18 @@ export default function ReviewsPage() {
       <Card>
         <CardTitle>
           Sessions ({sessions.length})
-          {loading && <span className="ml-2 text-sm text-gray-400">loading...</span>}
+          {loading && <span className="ml-2 text-sm text-muted-foreground">loading...</span>}
         </CardTitle>
 
         {sessions.length === 0 ? (
-          <p className="text-gray-500 text-sm mt-3">No sessions match the current filters</p>
+          <p className="text-muted-foreground text-sm mt-3">
+            No sessions match the current filters
+          </p>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-gray-500">
+                <tr className="border-b text-left text-muted-foreground">
                   <th className="pb-2 font-medium">Date</th>
                   <th className="pb-2 font-medium">Location</th>
                   <th className="pb-2 font-medium">Period</th>
@@ -170,12 +172,12 @@ export default function ReviewsPage() {
               </thead>
               <tbody>
                 {sessions.map((s) => (
-                  <tr key={s.id} className="border-b last:border-0 hover:bg-gray-50">
+                  <tr key={s.id} className="border-b last:border-0 hover:bg-muted/50">
                     <td className="py-3">{formatDate(s.date)}</td>
                     <td className="py-3">
                       <Link
                         href={`/ops/reviews/${s.id}`}
-                        className="text-indigo-600 hover:underline font-medium"
+                        className="text-primary hover:underline font-medium"
                       >
                         {s.location.name}
                       </Link>

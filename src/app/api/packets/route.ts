@@ -1,8 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createMenuSignagePacketSchema } from "@/lib/validations";
+import { handleServiceError } from "@/lib/api-errors";
+import { createAuditEvent } from "@/modules/audit/service";
 import { requireAuth } from "@/modules/identity-access/middleware";
-import { hasAnyPermission, hasPermission } from "@/modules/identity-access/service";
+import type { EffectiveUserContext } from "@/modules/identity-access/types";
+import {
+  getManagedKitchenAdminContextForManager,
+  hasAnyPermission,
+  hasPermission,
+} from "@/modules/identity-access/service";
 import { createMenuSignagePacket, listMenuSignagePackets } from "@/modules/menu-signage/service";
+
+async function resolveScopedLocationIds(user: EffectiveUserContext, viewAsKitchenAdminId?: string) {
+  if (!viewAsKitchenAdminId) {
+    return {
+      locationIds: user.locationIds,
+      viewAsKitchenAdminId: undefined,
+    };
+  }
+
+  if (!hasPermission(user, "kitchen_admins.view_as")) {
+    return null;
+  }
+
+  const managedKitchenAdmin = await getManagedKitchenAdminContextForManager(
+    user.id,
+    viewAsKitchenAdminId
+  );
+  if (!managedKitchenAdmin) {
+    return null;
+  }
+
+  return {
+    locationIds: managedKitchenAdmin.locationIds,
+    viewAsKitchenAdminId,
+  };
+}
 
 export async function GET(req: NextRequest) {
   const { error, user } = await requireAuth();
@@ -21,10 +54,18 @@ export async function GET(req: NextRequest) {
     assignedChefId: search.get("assignedChefId") ?? undefined,
   };
 
+  const scoped = await resolveScopedLocationIds(
+    user,
+    search.get("viewAsKitchenAdminId") ?? undefined
+  );
+  if (!scoped) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const hasGlobalAccess = hasAnyPermission(user, ["packets.override", "reviews.manage"]);
   const packets = await listMenuSignagePackets(
     filters,
-    hasGlobalAccess ? undefined : user.locationIds
+    hasGlobalAccess ? undefined : scoped.locationIds
   );
 
   return NextResponse.json(packets);
@@ -43,11 +84,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
+  const scoped = await resolveScopedLocationIds(
+    user,
+    typeof body?.viewAsKitchenAdminId === "string" ? body.viewAsKitchenAdminId : undefined
+  );
+  if (!scoped) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const hasGlobalAccess = hasAnyPermission(user, ["packets.override", "reviews.manage"]);
+  if (!hasGlobalAccess && !scoped.locationIds.includes(parsed.data.locationId)) {
+    return NextResponse.json(
+      { error: "You can only create packets for your assigned locations." },
+      { status: 403 }
+    );
+  }
+
   try {
     const packet = await createMenuSignagePacket(user.id, parsed.data);
+    if (!packet) {
+      return NextResponse.json({ error: "Failed to create packet" }, { status: 500 });
+    }
+    createAuditEvent({
+      entityType: "MenuSignagePacket",
+      entityId: packet.id,
+      action: "packet_created",
+      actorId: user.id,
+      actorName: user.name,
+      metadata: {
+        mode: "create",
+        viewAsKitchenAdminId: scoped.viewAsKitchenAdminId ?? null,
+        locationId: packet.locationId,
+        meal: packet.meal,
+      },
+    }).catch(() => {});
     return NextResponse.json(packet, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return handleServiceError(err);
   }
 }

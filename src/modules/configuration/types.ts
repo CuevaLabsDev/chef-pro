@@ -48,6 +48,7 @@ export interface RatingQuestion {
 export interface CreateLocationInput {
   name: string;
   description?: string;
+  buildingId?: string;
 }
 
 export interface CreateTastingPeriodInput {

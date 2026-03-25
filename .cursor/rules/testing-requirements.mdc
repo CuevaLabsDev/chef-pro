@@ -1,0 +1,17 @@
+---
+description: Testing requirements for service and utility code
+alwaysApply: true
+---
+
+# Testing Requirements
+
+- Every service module must have a corresponding `.test.ts` file.
+- Test edge cases: duplicate names (P2002), missing records (P2025), permission denials.
+- Run `vitest related --run` via lint-staged before commits.
+- Never ship a new service function without at least one happy-path and one error-path test.
+
+# Test Patterns
+
+- Mock Prisma with `vi.mock("@/lib/db")` and typed mock objects.
+- Use `vi.clearAllMocks()` in `beforeEach` to isolate tests.
+- Test `handleServiceError` mapping independently in `src/lib/api-errors.test.ts`.

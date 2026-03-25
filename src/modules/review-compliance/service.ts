@@ -20,8 +20,13 @@ export async function transitionSession(input: TransitionSessionInput, reviewerI
     throw new Error(`Cannot transition from ${session.status} to ${input.toStatus}`);
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.tastingSession.update({
+  const reviewer = await prisma.user.findUnique({
+    where: { id: reviewerId },
+    select: { name: true },
+  });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.tastingSession.update({
       where: { id: input.sessionId },
       data: { status: input.toStatus },
       include: {
@@ -30,8 +35,9 @@ export async function transitionSession(input: TransitionSessionInput, reviewerI
         tastingPeriod: true,
         chef: { select: { id: true, name: true } },
       },
-    }),
-    prisma.reviewAction.create({
+    });
+
+    await tx.reviewAction.create({
       data: {
         sessionId: input.sessionId,
         reviewerId,
@@ -39,8 +45,25 @@ export async function transitionSession(input: TransitionSessionInput, reviewerI
         toStatus: input.toStatus,
         notes: input.notes,
       },
-    }),
-  ]);
+    });
+
+    await tx.auditEvent.create({
+      data: {
+        entityType: "TastingSession",
+        entityId: input.sessionId,
+        action: `transition_${input.toStatus}`,
+        actorId: reviewerId,
+        actorName: reviewer?.name ?? "Unknown",
+        metadata: {
+          fromStatus: session.status,
+          toStatus: input.toStatus,
+          notes: input.notes,
+        },
+      },
+    });
+
+    return result;
+  });
 
   const eventType =
     input.toStatus === "reviewed"
@@ -69,12 +92,18 @@ export async function unlockSession(sessionId: string, reviewerId: string) {
     throw new Error("Session is not locked");
   }
 
-  const [updated] = await prisma.$transaction([
-    prisma.tastingSession.update({
+  const reviewer = await prisma.user.findUnique({
+    where: { id: reviewerId },
+    select: { name: true },
+  });
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.tastingSession.update({
       where: { id: sessionId },
       data: { status: "submitted" },
-    }),
-    prisma.reviewAction.create({
+    });
+
+    await tx.reviewAction.create({
       data: {
         sessionId,
         reviewerId,
@@ -82,8 +111,21 @@ export async function unlockSession(sessionId: string, reviewerId: string) {
         toStatus: "submitted",
         notes: "Session unlocked by admin",
       },
-    }),
-  ]);
+    });
+
+    await tx.auditEvent.create({
+      data: {
+        entityType: "TastingSession",
+        entityId: sessionId,
+        action: "unlocked",
+        actorId: reviewerId,
+        actorName: reviewer?.name ?? "Unknown",
+        metadata: { fromStatus: "locked", toStatus: "submitted" },
+      },
+    });
+
+    return result;
+  });
 
   await eventBus.publish("session_unlocked", reviewerId, sessionId, "TastingSession", {
     sessionId,
