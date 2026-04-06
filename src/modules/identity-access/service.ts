@@ -57,16 +57,6 @@ const fallbackRolePermissions: Record<Role, PermissionKey[]> = {
     "packets.read",
     "packets.override",
   ],
-  ops_admin: [
-    "tastings.view_all",
-    "config.manage",
-    "reviews.manage",
-    "reviews.unlock",
-    "reports.view",
-    "notifications.view",
-    "packets.read",
-    "packets.override",
-  ],
   fte: ALL_PERMISSION_KEYS,
 };
 
@@ -322,7 +312,7 @@ export async function clearManagedKitchenAdmins(managerId: string) {
 
 export async function getOpsAndFteUsers() {
   return prisma.user.findMany({
-    where: { role: { in: ["ops", "ops_admin", "fte"] }, isActive: true },
+    where: { role: { in: ["ops", "fte"] }, isActive: true },
   });
 }
 
@@ -362,12 +352,16 @@ export async function ensureDefaultRoleSubtypes() {
       },
       update: {
         label: subtype.label,
+        rank: subtype.rank,
+        parentSubtypeCode: subtype.parentSubtypeCode,
         isActive: true,
       },
       create: {
         role: subtype.role,
         code: subtype.code,
         label: subtype.label,
+        rank: subtype.rank,
+        parentSubtypeCode: subtype.parentSubtypeCode,
       },
     });
 
@@ -414,7 +408,7 @@ export async function getRoleSubtypesWithDefaults() {
         include: { permission: true },
       },
     },
-    orderBy: [{ role: "asc" }, { label: "asc" }],
+    orderBy: [{ role: "asc" }, { rank: "desc" }, { label: "asc" }],
   });
 
   return subtypes.map((subtype) => ({
@@ -422,6 +416,8 @@ export async function getRoleSubtypesWithDefaults() {
     role: subtype.role,
     code: subtype.code,
     label: subtype.label,
+    rank: subtype.rank,
+    parentSubtypeCode: subtype.parentSubtypeCode,
     permissionKeys: subtype.permissions
       .filter((entry) => entry.isAllowed && isPermissionKey(entry.permission.key))
       .map((entry) => entry.permission.key as PermissionKey),
@@ -654,5 +650,76 @@ export async function updateUserRoleProfile(
       roleLabel: payload.roleLabel,
     },
     include: userContextInclude,
+  });
+}
+
+/**
+ * Walks the subtype hierarchy upward from the given user's rank, skipping levels
+ * with no assigned user at the location, and returns the nearest supervisor.
+ */
+export async function resolveDirectReport(userId: string, locationId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { roleSubtype: true },
+  });
+  if (!user?.roleSubtype) return null;
+
+  const currentRank = user.roleSubtype.rank;
+
+  const candidates = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      locationAccess: { some: { locationId } },
+      roleSubtype: { rank: { gt: currentRank } },
+    },
+    include: { roleSubtype: true },
+    orderBy: { roleSubtype: { rank: "asc" } },
+  });
+
+  return candidates[0] ?? null;
+}
+
+/**
+ * Returns the full reporting chain above a user at a location, ordered from
+ * immediate supervisor to the top of the hierarchy.
+ */
+export async function resolveReportingChain(userId: string, locationId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { roleSubtype: true },
+  });
+  if (!user?.roleSubtype) return [];
+
+  const currentRank = user.roleSubtype.rank;
+
+  const chain = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      locationAccess: { some: { locationId } },
+      roleSubtype: { rank: { gt: currentRank } },
+    },
+    include: { roleSubtype: true },
+    orderBy: { roleSubtype: { rank: "asc" } },
+  });
+
+  return chain;
+}
+
+/**
+ * Returns all active subtypes ordered by rank, useful for displaying the
+ * organizational hierarchy.
+ */
+export async function getSubtypeHierarchy() {
+  return prisma.roleSubtype.findMany({
+    where: { isActive: true },
+    orderBy: { rank: "desc" },
+    select: {
+      id: true,
+      role: true,
+      code: true,
+      label: true,
+      rank: true,
+      parentSubtypeCode: true,
+    },
   });
 }

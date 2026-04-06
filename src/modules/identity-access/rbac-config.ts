@@ -101,6 +101,21 @@ export const PERMISSION_CATALOG = [
     name: "Resolve Packet Amendment",
     description: "Apply or dismiss a packet amendment request.",
   },
+  {
+    key: "counts.configure",
+    name: "Configure Count Sheets",
+    description: "Manage count sheet templates for assigned locations.",
+  },
+  {
+    key: "counts.record",
+    name: "Record Daily Counts",
+    description: "Create, edit, and submit daily count sheets.",
+  },
+  {
+    key: "counts.view",
+    name: "View Daily Counts",
+    description: "View daily count history and summaries.",
+  },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_CATALOG)[number]["key"];
@@ -113,6 +128,8 @@ export interface DefaultSubtypeDefinition {
   role: Role;
   code: string;
   label: string;
+  rank: number;
+  parentSubtypeCode: string | null;
   permissionKeys: PermissionKey[];
 }
 
@@ -125,68 +142,135 @@ const chefBasePermissions: PermissionKey[] = [
   "packets.request_amendment",
 ];
 
+const executiveChefPermissions: PermissionKey[] = [
+  ...chefBasePermissions,
+  "tastings.view_all",
+  "reviews.manage",
+  "reports.view",
+];
+
+const opsBasePermissions: PermissionKey[] = [
+  "tastings.view_all",
+  "config.manage",
+  "reviews.manage",
+  "reviews.unlock",
+  "reports.view",
+  "notifications.view",
+  "packets.read",
+  "packets.override",
+];
+
+const assistantOpsPermissions: PermissionKey[] = [
+  "tastings.view_all",
+  "reviews.manage",
+  "reports.view",
+  "notifications.view",
+  "packets.read",
+  "packets.override",
+];
+
 export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
+  // FTE tier (rank 100+) — corporate/executive
+  {
+    role: "fte",
+    code: "fte_ops",
+    label: "FTE Ops",
+    rank: 110,
+    parentSubtypeCode: null,
+    permissionKeys: ALL_PERMISSION_KEYS,
+  },
+  {
+    role: "fte",
+    code: "fte_chef",
+    label: "FTE Chef",
+    rank: 100,
+    parentSubtypeCode: "fte_ops",
+    permissionKeys: ALL_PERMISSION_KEYS,
+  },
+
+  // Operations tier (rank 50–59) — day-to-day management
+  {
+    role: "ops",
+    code: "ops",
+    label: "Ops",
+    rank: 55,
+    parentSubtypeCode: "fte_chef",
+    permissionKeys: opsBasePermissions,
+  },
+  {
+    role: "ops",
+    code: "assistant_ops",
+    label: "Assistant Ops",
+    rank: 50,
+    parentSubtypeCode: "ops",
+    permissionKeys: assistantOpsPermissions,
+  },
+
+  // Chef tier (rank 10–40) — kitchen line
   {
     role: "chef",
-    code: "jr_sous",
-    label: "Jr. Sous",
+    code: "executive",
+    label: "Executive Chef",
+    rank: 40,
+    parentSubtypeCode: "fte_chef",
+    permissionKeys: executiveChefPermissions,
+  },
+  {
+    role: "chef",
+    code: "sr_sous",
+    label: "Sr. Sous",
+    rank: 30,
+    parentSubtypeCode: "executive",
     permissionKeys: chefBasePermissions,
   },
   {
     role: "chef",
     code: "sous",
     label: "Sous",
+    rank: 20,
+    parentSubtypeCode: "sr_sous",
     permissionKeys: chefBasePermissions,
   },
   {
     role: "chef",
-    code: "sr_sous",
-    label: "Sr. Sous",
+    code: "jr_sous",
+    label: "Jr. Sous",
+    rank: 10,
+    parentSubtypeCode: "sous",
     permissionKeys: chefBasePermissions,
   },
+
+  // FOH tier (rank 60–65)
   {
     role: "foh",
     code: "foh_manager",
     label: "FOH Manager",
-    permissionKeys: ["packets.read", "packets.execute"],
+    rank: 65,
+    parentSubtypeCode: "fte_chef",
+    permissionKeys: [
+      "packets.read",
+      "packets.execute",
+      "counts.configure",
+      "counts.record",
+      "counts.view",
+    ],
   },
   {
     role: "foh",
     code: "assistant_foh",
     label: "Assistant FOH",
-    permissionKeys: ["packets.read"],
+    rank: 60,
+    parentSubtypeCode: "foh_manager",
+    permissionKeys: ["packets.read", "counts.record", "counts.view"],
   },
-  {
-    role: "ops",
-    code: "ops",
-    label: "Ops",
-    permissionKeys: [
-      "tastings.view_all",
-      "config.manage",
-      "reviews.manage",
-      "reviews.unlock",
-      "reports.view",
-      "notifications.view",
-      "packets.read",
-      "packets.override",
-    ],
-  },
-  {
-    role: "kitchen_admin",
-    code: "kitchen_admin",
-    label: "Kitchen Admin",
-    permissionKeys: [
-      "packets.read",
-      "packets.manage_structure",
-      "packets.publish",
-      "packets.finalize_service",
-      "packets.resolve_amendment",
-    ],
-  },
+
+  // Kitchen Admin tier (rank 70–75)
   {
     role: "kitchen_admin_manager",
     code: "kitchen_admin_manager",
     label: "Kitchen Admin Manager",
+    rank: 75,
+    parentSubtypeCode: "fte_chef",
     permissionKeys: [
       "packets.read",
       "packets.manage_structure",
@@ -195,15 +279,17 @@ export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
     ],
   },
   {
-    role: "fte",
-    code: "cafe_chef",
-    label: "Cafe Chef",
-    permissionKeys: ALL_PERMISSION_KEYS,
-  },
-  {
-    role: "fte",
-    code: "fte_ops",
-    label: "FTE Ops",
-    permissionKeys: ALL_PERMISSION_KEYS,
+    role: "kitchen_admin",
+    code: "kitchen_admin",
+    label: "Kitchen Admin",
+    rank: 70,
+    parentSubtypeCode: "kitchen_admin_manager",
+    permissionKeys: [
+      "packets.read",
+      "packets.manage_structure",
+      "packets.publish",
+      "packets.finalize_service",
+      "packets.resolve_amendment",
+    ],
   },
 ];

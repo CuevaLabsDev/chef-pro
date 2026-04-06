@@ -48,12 +48,16 @@ async function main() {
       },
       update: {
         label: subtype.label,
+        rank: subtype.rank,
+        parentSubtypeCode: subtype.parentSubtypeCode,
         isActive: true,
       },
       create: {
         role: subtype.role,
         code: subtype.code,
         label: subtype.label,
+        rank: subtype.rank,
+        parentSubtypeCode: subtype.parentSubtypeCode,
       },
     });
     subtypeIdByRoleCode.set(`${subtype.role}:${subtype.code}`, savedSubtype.id);
@@ -202,6 +206,63 @@ async function main() {
     },
   });
   console.log("  User: fte@chefpro.demo (fte/fte_ops)");
+
+  await prisma.user.upsert({
+    where: { email: "fte.chef@chefpro.demo" },
+    update: {
+      name: "Demo FTE Chef",
+      passwordHash,
+      role: "fte",
+      roleSubtypeId: subtypeIdByRoleCode.get("fte:fte_chef"),
+      isActive: true,
+    },
+    create: {
+      email: "fte.chef@chefpro.demo",
+      name: "Demo FTE Chef",
+      passwordHash,
+      role: "fte",
+      roleSubtypeId: subtypeIdByRoleCode.get("fte:fte_chef"),
+    },
+  });
+  console.log("  User: fte.chef@chefpro.demo (fte/fte_chef)");
+
+  await prisma.user.upsert({
+    where: { email: "assistant.ops@chefpro.demo" },
+    update: {
+      name: "Demo Assistant Ops",
+      passwordHash,
+      role: "ops",
+      roleSubtypeId: subtypeIdByRoleCode.get("ops:assistant_ops"),
+      isActive: true,
+    },
+    create: {
+      email: "assistant.ops@chefpro.demo",
+      name: "Demo Assistant Ops",
+      passwordHash,
+      role: "ops",
+      roleSubtypeId: subtypeIdByRoleCode.get("ops:assistant_ops"),
+    },
+  });
+  console.log("  User: assistant.ops@chefpro.demo (ops/assistant_ops)");
+
+  await prisma.user.upsert({
+    where: { email: "exec.chef@chefpro.demo" },
+    update: {
+      name: "Demo Executive Chef",
+      passwordHash,
+      role: "chef",
+      roleSubtypeId: subtypeIdByRoleCode.get("chef:executive"),
+      isActive: true,
+    },
+    create: {
+      email: "exec.chef@chefpro.demo",
+      name: "Demo Executive Chef",
+      passwordHash,
+      role: "chef",
+      roleSubtypeId: subtypeIdByRoleCode.get("chef:executive"),
+    },
+  });
+  console.log("  User: exec.chef@chefpro.demo (chef/executive)");
 
   console.log("\nSeed complete!");
   await prisma.$disconnect();

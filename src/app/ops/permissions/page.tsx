@@ -16,7 +16,7 @@ interface Permission {
 
 interface RoleSubtype {
   id: string;
-  role: "fte" | "ops" | "ops_admin" | "kitchen_admin" | "kitchen_admin_manager" | "chef" | "foh";
+  role: "fte" | "ops" | "kitchen_admin" | "kitchen_admin_manager" | "chef" | "foh";
   code: string;
   label: string;
   permissionKeys: string[];
@@ -37,13 +37,12 @@ interface UserRecord {
 type OverrideMode = "inherit" | "allow" | "deny";
 
 const ROLE_LABELS: Record<UserRecord["role"], string> = {
-  fte: "Full-time team",
-  ops: "Operations team",
-  ops_admin: "Operations team (legacy)",
-  kitchen_admin: "Kitchen team",
-  kitchen_admin_manager: "Kitchen admin manager",
-  chef: "Chef team",
-  foh: "Front of house team",
+  fte: "Full-time Employee",
+  ops: "Operations",
+  kitchen_admin: "Kitchen Admin",
+  kitchen_admin_manager: "Kitchen Admin Manager",
+  chef: "Chef Team",
+  foh: "Front of House",
 };
 
 const PERMISSION_AREA_COPY: Record<string, { label: string; description: string; order: number }> =
@@ -274,11 +273,7 @@ export default function PermissionsPage() {
   );
 
   const filteredSubtypes = useMemo(
-    () =>
-      subtypes.filter(
-        (subtype) =>
-          subtype.role === userRole || (userRole === "ops_admin" && subtype.role === "ops")
-      ),
+    () => subtypes.filter((subtype) => subtype.role === userRole),
     [subtypes, userRole]
   );
 
@@ -386,7 +381,7 @@ export default function PermissionsPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          role: userRole === "ops_admin" ? "ops" : userRole,
+          role: userRole,
           roleSubtypeId: userSubtypeId || null,
           roleLabel: userLabel || null,
           managedKitchenAdminIds:
@@ -544,7 +539,6 @@ export default function PermissionsPage() {
                 options={[
                   { value: "fte", label: ROLE_LABELS.fte },
                   { value: "ops", label: ROLE_LABELS.ops },
-                  { value: "ops_admin", label: ROLE_LABELS.ops_admin },
                   { value: "kitchen_admin", label: ROLE_LABELS.kitchen_admin },
                   { value: "kitchen_admin_manager", label: ROLE_LABELS.kitchen_admin_manager },
                   { value: "chef", label: ROLE_LABELS.chef },

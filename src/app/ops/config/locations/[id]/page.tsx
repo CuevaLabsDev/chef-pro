@@ -93,7 +93,6 @@ interface RoleSubtype {
 const ROLE_LABELS: Record<string, string> = {
   fte: "FTE",
   ops: "Ops",
-  ops_admin: "Ops Admin",
   kitchen_admin: "Kitchen Admin",
   kitchen_admin_manager: "Kitchen Admin Manager",
   chef: "Chef",

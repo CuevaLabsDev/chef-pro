@@ -160,12 +160,31 @@ Result: `tastings.create`, `tastings.edit`, `tastings.submit`, `packets.read`, `
 | Role                    | Intended for                                 |
 | ----------------------- | -------------------------------------------- |
 | `fte`                   | Full-time employees (superuser)              |
-| `ops`                   | Operations staff                             |
-| `ops_admin`             | Operations administrators                    |
+| `ops`                   | Operations management                        |
 | `kitchen_admin`         | Kitchen administrators                       |
 | `kitchen_admin_manager` | Kitchen admin managers (support + oversight) |
-| `chef`                  | Line chefs (create/submit tastings)          |
+| `chef`                  | Chef team (jr. sous through executive)       |
 | `foh`                   | Front-of-house staff                         |
+
+### Subtype Hierarchy
+
+```
+fte_ops (rank 110)          ← root
+  └── fte_chef (rank 100)
+        ├── ops (rank 55)
+        │     └── assistant_ops (rank 50)
+        ├── executive (rank 40)
+        │     └── sr_sous (rank 30)
+        │           └── sous (rank 20)
+        │                 └── jr_sous (rank 10)
+        ├── foh_manager (rank 65)
+        │     └── assistant_foh (rank 60)
+        └── kitchen_admin_manager (rank 75)
+              └── kitchen_admin (rank 70)
+```
+
+Reporting at a location is resolved by walking up from the user's rank to
+the nearest higher-ranked user assigned to that location.
 
 ### Permission Keys (18 total)
 

@@ -43,7 +43,7 @@
 | `getAllUsers()`                      | `UserWithContext[]`                         |
 | `getUsersByRole(role)`               | `UserWithContext[]`                         |
 | `getUsersWithEffectivePermissions()` | Users with computed permissions + overrides |
-| `getOpsAndFteUsers()`                | `User[]` (ops, ops_admin, fte roles)        |
+| `getOpsAndFteUsers()`                | `User[]` (ops, fte roles)                   |
 
 ### RBAC Management
 

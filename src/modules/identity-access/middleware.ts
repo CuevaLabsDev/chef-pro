@@ -92,8 +92,7 @@ export async function requireAnyPermission(permissionKeys: PermissionKey[]) {
 }
 
 export function getDefaultHomePath(user: EffectiveUserContext): string {
-  if (user.role === "fte" || user.role === "ops" || user.role === "ops_admin")
-    return "/ops/dashboard";
+  if (user.role === "fte" || user.role === "ops") return "/ops/dashboard";
   if (user.role === "chef") return "/chef/dashboard";
   if (user.role === "kitchen_admin" || user.role === "kitchen_admin_manager" || user.role === "foh")
     return "/menu-signage";

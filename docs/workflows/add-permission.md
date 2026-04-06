@@ -42,7 +42,7 @@ Add the new key to the `permissionKeys` array of relevant entries in `DEFAULT_SU
 }
 ```
 
-Decide which subtypes should have this permission by default. FTE subtypes (`cafe_chef`, `fte_ops`) typically get all permissions.
+Decide which subtypes should have this permission by default. FTE subtypes (`fte_chef`, `fte_ops`) typically get all permissions.
 
 ## Step 3: Update Seed Data
 

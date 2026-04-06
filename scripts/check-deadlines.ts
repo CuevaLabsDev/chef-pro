@@ -56,7 +56,7 @@ async function main() {
     if (alreadyNotified) continue;
 
     const admins = await prisma.user.findMany({
-      where: { role: { in: ["ops", "ops_admin", "fte"] }, isActive: true },
+      where: { role: { in: ["ops", "fte"] }, isActive: true },
     });
 
     for (const admin of admins) {

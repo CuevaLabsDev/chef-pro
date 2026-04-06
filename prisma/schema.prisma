@@ -11,7 +11,6 @@ datasource db {
 enum Role {
   fte
   ops
-  ops_admin
   kitchen_admin
   kitchen_admin_manager
   chef
@@ -60,6 +59,8 @@ model User {
   requestedAmendments    PacketAmendment[]       @relation("AmendmentRequester")
   resolvedAmendments     PacketAmendment[]       @relation("AmendmentResolver")
   pushSubscriptions      PushSubscription[]
+  submittedCountSheets   DailyCountSheet[]       @relation("CountSheetSubmitter")
+  amendedCountSheets     DailyCountSheet[]       @relation("CountSheetAmender")
 }
 
 model UserLocationAccess {
@@ -86,18 +87,23 @@ model Permission {
 }
 
 model RoleSubtype {
-  id        String   @id @default(cuid())
-  role      Role
-  code      String
-  label     String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  role              Role
+  code              String
+  label             String
+  rank              Int      @default(0)
+  parentSubtypeCode String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   users       User[]
   permissions RoleSubtypePermission[]
+  parent      RoleSubtype?  @relation("SubtypeHierarchy", fields: [parentSubtypeCode], references: [code])
+  children    RoleSubtype[] @relation("SubtypeHierarchy")
 
   @@unique([role, code])
+  @@unique([code])
 }
 
 model RoleSubtypePermission {
@@ -177,11 +183,12 @@ model Location {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  building        Building?            @relation(fields: [buildingId], references: [id], onDelete: SetNull)
-  userAccess      UserLocationAccess[]
-  deadlineRules   DeadlineRule[]
-  tastingSessions TastingSession[]
-  signagePackets  MenuSignagePacket[]
+  building             Building?            @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  userAccess           UserLocationAccess[]
+  deadlineRules        DeadlineRule[]
+  tastingSessions      TastingSession[]
+  signagePackets       MenuSignagePacket[]
+  countSheetTemplates  CountSheetTemplate[]
 }
 
 model TastingPeriod {
@@ -190,8 +197,9 @@ model TastingPeriod {
   sortOrder Int
   isActive  Boolean @default(true)
 
-  deadlineRules   DeadlineRule[]
-  tastingSessions TastingSession[]
+  deadlineRules        DeadlineRule[]
+  tastingSessions      TastingSession[]
+  countSheetTemplates  CountSheetTemplate[]
 }
 
 model DeadlineRule {
@@ -400,6 +408,79 @@ model PacketAmendment {
 
   @@index([packetId, status])
   @@index([packetId, createdAt])
+}
+
+// ─── DailyCounts Module ─────────────────────────────────────────────
+
+enum CountSheetStatus {
+  draft
+  submitted
+}
+
+model CountSheetTemplate {
+  id              String   @id @default(cuid())
+  locationId      String
+  tastingPeriodId String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  location      Location             @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  tastingPeriod TastingPeriod        @relation(fields: [tastingPeriodId], references: [id], onDelete: Cascade)
+  sections      CountSheetSection[]
+  sheets        DailyCountSheet[]
+
+  @@unique([locationId, tastingPeriodId])
+}
+
+model CountSheetSection {
+  id         String  @id @default(cuid())
+  templateId String
+  label      String
+  group      String?
+  fields     Json
+  sortOrder  Int
+  isActive   Boolean @default(true)
+
+  template CountSheetTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  entries  DailyCountEntry[]
+
+  @@unique([templateId, sortOrder])
+}
+
+model DailyCountSheet {
+  id            String           @id @default(cuid())
+  templateId    String
+  date          DateTime         @db.Date
+  status        CountSheetStatus @default(draft)
+  submittedById String?
+  submittedAt   DateTime?
+  amendedById   String?
+  amendedAt     DateTime?
+  amendReason   String?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  template    CountSheetTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  submittedBy User?              @relation("CountSheetSubmitter", fields: [submittedById], references: [id])
+  amendedBy   User?              @relation("CountSheetAmender", fields: [amendedById], references: [id])
+  entries     DailyCountEntry[]
+
+  @@unique([templateId, date])
+  @@index([date])
+}
+
+model DailyCountEntry {
+  id        String @id @default(cuid())
+  sheetId   String
+  sectionId String
+  values    Json   @default("{}")
+
+  sheet   DailyCountSheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  section CountSheetSection @relation(fields: [sectionId], references: [id])
+
+  @@unique([sheetId, sectionId])
 }
 
 // ─── ReviewCompliance Module ────────────────────────────────────────

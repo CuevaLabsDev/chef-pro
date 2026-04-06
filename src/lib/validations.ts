@@ -294,6 +294,54 @@ export const resolvePacketAmendmentSchema = z.object({
   status: z.enum(["applied", "dismissed"]),
 });
 
+// ─── DailyCounts Module ─────────────────────────────────────────────
+
+export const fieldDefinitionSchema = z.object({
+  key: z
+    .string()
+    .min(1, "Field key is required")
+    .regex(/^[a-z][a-z0-9_]*$/, "Key must be lowercase alphanumeric with underscores"),
+  label: z.string().min(1, "Field label is required"),
+  type: z.enum(["number", "text", "time"]),
+  role: z.enum(["initial", "addition", "remainder", "label"]).optional(),
+});
+
+const countSheetSectionSchema = z.object({
+  label: z.string().min(1, "Section label is required"),
+  group: z.string().nullable().optional(),
+  fields: z
+    .array(fieldDefinitionSchema)
+    .min(1, "At least one field is required")
+    .refine(
+      (fields) => {
+        const keys = fields.map((f) => f.key);
+        return new Set(keys).size === keys.length;
+      },
+      { message: "Field keys must be unique within a section" }
+    ),
+  sortOrder: z.number().int().min(0),
+});
+
+export const upsertCountSheetTemplateSchema = z.object({
+  locationId: z.string().min(1, "Location is required"),
+  tastingPeriodId: z.string().min(1, "Period is required"),
+  sections: z.array(countSheetSectionSchema).min(1, "At least one section is required"),
+});
+
+export const countEntrySchema = z.object({
+  sectionId: z.string().min(1),
+  values: z.record(z.string(), z.union([z.string(), z.number(), z.null()])),
+});
+
+export const updateCountEntriesSchema = z.object({
+  entries: z.array(countEntrySchema),
+});
+
+export const amendCountSheetSchema = z.object({
+  reason: z.string().min(1, "Amendment reason is required"),
+  entries: z.array(countEntrySchema),
+});
+
 export const updateDeadlineRuleSchema = z.object({
   deadlineTime: z.string().regex(hhmmRegex, "Must be HH:mm format").optional(),
   packetDueTime: z.string().regex(hhmmRegex, "Must be HH:mm format").nullable().optional(),

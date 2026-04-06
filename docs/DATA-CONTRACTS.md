@@ -27,7 +27,7 @@ Source: `prisma/schema.prisma`
 
 Relations: `locationAccess[]`, `roleSubtype?`, `permissionRules[]`, `tastingSessions[]`, `reviewActions[]`, `auditEvents[]`, `notifications[]`, `exportJobs[]`, `createdPackets[]`, `assignedPackets[]`
 
-**Role** enum: `fte`, `ops`, `ops_admin`, `kitchen_admin`, `kitchen_admin_manager`, `chef`, `foh`
+**Role** enum: `fte`, `ops`, `kitchen_admin`, `kitchen_admin_manager`, `chef`, `foh`
 
 **UserLocationAccess**
 
