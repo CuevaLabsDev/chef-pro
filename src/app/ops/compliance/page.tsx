@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, FileWarning, Loader2, RotateCcw, ShieldCheck } from "lucide-react";
+import {
+  ExternalLink,
+  FileWarning,
+  Loader2,
+  RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +75,7 @@ export default function OpsCompliancePage() {
   const [selected, setSelected] = useState<AuditDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
+  const [aiStats, setAiStats] = useState<{ total: number; blocked: number } | null>(null);
 
   const loadAudits = useCallback(async () => {
     setLoading(true);
@@ -128,6 +136,13 @@ export default function OpsCompliancePage() {
     loadAudits();
   }, [loadAudits]);
 
+  useEffect(() => {
+    fetch("/api/ai/shield")
+      .then((r) => r.json())
+      .then((d) => setAiStats(d))
+      .catch(() => null);
+  }, []);
+
   const openIssues = audits.reduce((sum, audit) => sum + audit._count.issues, 0);
   const needingReview = audits.filter((audit) => audit.needsHumanReview).length;
 
@@ -147,7 +162,7 @@ export default function OpsCompliancePage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Audits</p>
@@ -164,6 +179,18 @@ export default function OpsCompliancePage() {
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Potential issues</p>
             <p className="text-2xl font-bold">{openIssues}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-1.5">
+              <ShieldAlert className="size-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">AI Governance</p>
+            </div>
+            <p className="text-2xl font-bold">{aiStats?.total ?? "—"}</p>
+            {aiStats && aiStats.blocked > 0 && (
+              <p className="text-xs text-destructive">{aiStats.blocked} blocked</p>
+            )}
           </CardContent>
         </Card>
       </div>

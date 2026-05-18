@@ -1,0 +1,47 @@
+version: "1.0"
+policy_name: "chefpro-compliance"
+default_action: ALLOW
+
+ingress_rules:
+  - name: block_common_injection_keywords
+    description: "Heuristic block on known injection keyword patterns (regex-based, not semantic)"
+    priority: 100
+    action: DENY
+    deny_message: "[ChefPro AI Shield] Request blocked: injection pattern detected."
+    conditions:
+      - field: contains_injection_patterns
+        match_type: boolean
+        value: true
+
+  - name: block_credential_in_prompt
+    description: "Block prompts containing API key or token patterns (AWS, OpenAI, etc.)"
+    priority: 90
+    action: DENY
+    deny_message: "[ChefPro AI Shield] Request blocked: credential content detected."
+    conditions:
+      - field: contains_credentials
+        match_type: boolean
+        value: true
+
+  - name: log_pii_request_patterns
+    description: "Log (but allow) prompts that appear to request personal data"
+    priority: 70
+    action: LOG
+    conditions:
+      - field: contains_pii_request
+        match_type: boolean
+        value: true
+
+egress_rules:
+  - name: block_credentials_in_response
+    priority: 100
+    action: DENY
+    deny_message: "[ChefPro AI Shield] Response withheld: credential content detected."
+    conditions:
+      - field: contains_credentials
+        match_type: boolean
+        value: true
+
+rate_limits:
+  requests_per_minute: 30
+  requests_per_hour: 200

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/modules/identity-access/middleware";
 import { runOrchestrator, saveInsightReport, listInsightReports } from "@/modules/ai-agents";
 import type { AgentName, InsightType } from "@/modules/ai-agents";
+import { createAuditEvent } from "@/modules/audit/service";
+import { inspectPrompt } from "@/lib/lobstertrap";
 import { z } from "zod";
 
 const insightRequestSchema = z.object({
@@ -81,6 +83,19 @@ export async function POST(req: NextRequest) {
   const { type, entityId } = parsed.data;
   const prompt = INSIGHT_PROMPTS[type](entityId);
 
+  const inspection = await inspectPrompt(prompt);
+  if (!inspection.allowed) {
+    await createAuditEvent({
+      actorId: user.id,
+      actorName: user.name ?? user.email,
+      entityId: entityId ?? "insights",
+      entityType: "AiInsight",
+      action: "AI_INSPECTION_BLOCKED",
+      metadata: { denyMessage: inspection.denyMessage, insightType: type },
+    });
+    return NextResponse.json({ error: inspection.denyMessage }, { status: 403 });
+  }
+
   try {
     const { response, agentUsed } = await runOrchestrator(
       prompt,
@@ -100,6 +115,16 @@ export async function POST(req: NextRequest) {
       content: response,
       metadata: { agentUsed, prompt },
     });
+
+    await createAuditEvent({
+      actorId: user.id,
+      actorName: user.name ?? user.email,
+      entityId: report.id,
+      entityType: "AiInsight",
+      action: "AI_INSPECTION_ALLOWED",
+      metadata: { insightType: type, agentUsed },
+    });
+
     return NextResponse.json(report, { status: 201 });
   } catch (err) {
     return getAiErrorResponse(err);
