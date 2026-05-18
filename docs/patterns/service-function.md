@@ -140,6 +140,13 @@ export async function updateWidget(id: string, data: UpdateInput): Promise<Widge
 3. **Type inputs and outputs.** Define types in the module's `types.ts`. Use them for function signatures.
 4. **Transactions for multi-table writes.** If two writes must be atomic, use `$transaction`.
 5. **Events after commit.** Publish domain events after the database write succeeds, never inside a transaction.
-6. **Audit on mutations.** Every create/update/delete should produce an audit event (directly or via domain event subscriber).
+6. **Audit on mutations.** Every create/update/delete should produce audit coverage, either through generic `AuditEvent` rows, domain-event subscribers, or a documented module-owned audit trail.
 7. **Soft delete.** Set `isActive: false` instead of deleting records. Query with `where: { isActive: true }` by default.
 8. **Return domain types.** Don't return raw Prisma types with internal fields. Map to types from `types.ts` if needed.
+
+## AI And File Services
+
+- AI services may keep service-local Zod schemas for model-output validation.
+- Store prompt/model/schema versions when generated records need an audit trail.
+- File services should store durable assets in Supabase or another durable store before analysis when the original must be retained.
+- Do not describe third-party AI output as final compliance/legal findings; store confidence and manager-review status when applicable.

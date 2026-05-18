@@ -26,7 +26,12 @@ interface InsightReport {
   createdAt: string;
 }
 
-const INSIGHT_TYPES: Array<{ type: InsightType; label: string; description: string; icon: React.ReactNode }> = [
+const INSIGHT_TYPES: Array<{
+  type: InsightType;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+}> = [
   {
     type: "tasting_analysis",
     label: "Tasting Analysis",
@@ -61,13 +66,27 @@ export default function AiAssistantPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type }),
       });
-      if (!res.ok) throw new Error("Failed to generate insight");
+      if (!res.ok) {
+        const errorBody = (await res.json().catch(() => null)) as {
+          error?: unknown;
+          retryAfterSeconds?: unknown;
+        } | null;
+        const errorMessage =
+          typeof errorBody?.error === "string" ? errorBody.error : "Failed to generate insight";
+        const retryMessage =
+          res.status === 429 && typeof errorBody?.retryAfterSeconds === "number"
+            ? `${errorMessage} (${errorBody.retryAfterSeconds}s)`
+            : errorMessage;
+        throw new Error(retryMessage);
+      }
       const report: InsightReport = await res.json();
       setReports((prev) => [report, ...prev]);
       setActiveTab("insights");
       toast.success("Insight report generated");
-    } catch {
-      toast.error("Failed to generate insight report");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to generate insight report";
+      console.error("Failed to generate insight report", err);
+      toast.error(message);
     } finally {
       setGeneratingInsight(null);
     }
@@ -101,7 +120,8 @@ export default function AiAssistantPage() {
         <div>
           <h1 className="text-2xl font-bold">AI Assistant</h1>
           <p className="text-sm text-muted-foreground">
-            Multi-agent system powered by Gemini · Tasting Intelligence · Menu Review · Ops Assistant
+            Multi-agent system powered by Gemini · Tasting Intelligence · Menu Review · Ops
+            Assistant
           </p>
         </div>
       </div>

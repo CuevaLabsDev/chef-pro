@@ -16,6 +16,7 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
     "config.manage",
     "reports.view",
     "notifications.view",
+    "compliance.view",
   ]);
   if (!canAccessOps) redirect(getDefaultHomePath(user));
 

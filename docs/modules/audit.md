@@ -76,3 +76,9 @@ await prisma.$transaction(async (tx) => {
 2. **Fire-and-forget from routes.** Use `.catch(() => {})` so audit failures don't break the user operation.
 3. **Inside transactions for atomic flows.** Review transitions create the audit event in the same transaction.
 4. **Consistent entity types.** Use the Prisma model name: `"TastingSession"`, `"Campus"`, `"User"`, etc.
+
+## Module-Owned Audit Records
+
+Generic `AuditEvent` rows are the default audit trail for most mutations. A module may own a specialized audit trail when the records themselves are the operational artifact.
+
+Current exception: `operational-compliance` stores `OperationalAudit`, `OperationalAuditAsset`, `ClosingPhoto`, `TemperatureLog`, `TemperatureEntry`, and `ComplianceIssue` records as its compliance audit trail. It does not currently create generic `AuditEvent` rows for upload, analysis, reanalysis, or issue-status changes.

@@ -1,6 +1,7 @@
-import type { FunctionDeclaration, Tool } from "@google/generative-ai";
-import { SchemaType } from "@google/generative-ai";
+import { Type, type FunctionDeclaration, type Tool } from "@google/genai";
 import { prisma } from "@/lib/db";
+import { hasPermission } from "@/modules/identity-access/service";
+import type { EffectiveUserContext } from "@/modules/identity-access/types";
 
 // ─── Tool Declarations (sent to Gemini) ──────────────────────────────────────
 
@@ -10,13 +11,13 @@ const declarations: FunctionDeclaration[] = [
     description:
       "Retrieve tasting sessions with dish ratings and compliance data. Use to analyze chef performance, rating trends, or compliance gaps.",
     parameters: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        locationId: { type: SchemaType.STRING, description: "Filter by location ID" },
-        dateFrom: { type: SchemaType.STRING, description: "Start date (YYYY-MM-DD)" },
-        dateTo: { type: SchemaType.STRING, description: "End date (YYYY-MM-DD)" },
+        locationId: { type: Type.STRING, description: "Filter by location ID" },
+        dateFrom: { type: Type.STRING, description: "Start date (YYYY-MM-DD)" },
+        dateTo: { type: Type.STRING, description: "End date (YYYY-MM-DD)" },
         status: {
-          type: SchemaType.STRING,
+          type: Type.STRING,
           description: "Filter by status: draft, submitted, reviewed, locked",
         },
       },
@@ -27,12 +28,12 @@ const declarations: FunctionDeclaration[] = [
     description:
       "Get aggregated average ratings per dish and location. Use to identify top-performing or underperforming dishes.",
     parameters: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        locationId: { type: SchemaType.STRING, description: "Filter by location ID" },
-        periodId: { type: SchemaType.STRING, description: "Filter by tasting period ID" },
-        dateFrom: { type: SchemaType.STRING, description: "Start date (YYYY-MM-DD)" },
-        dateTo: { type: SchemaType.STRING, description: "End date (YYYY-MM-DD)" },
+        locationId: { type: Type.STRING, description: "Filter by location ID" },
+        periodId: { type: Type.STRING, description: "Filter by tasting period ID" },
+        dateFrom: { type: Type.STRING, description: "Start date (YYYY-MM-DD)" },
+        dateTo: { type: Type.STRING, description: "End date (YYYY-MM-DD)" },
       },
     },
   },
@@ -41,11 +42,11 @@ const declarations: FunctionDeclaration[] = [
     description:
       "Get compliance metrics: submission rates, deadline adherence, temperature compliance, and checklist completion rates.",
     parameters: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        locationId: { type: SchemaType.STRING, description: "Filter by location ID" },
-        dateFrom: { type: SchemaType.STRING, description: "Start date (YYYY-MM-DD)" },
-        dateTo: { type: SchemaType.STRING, description: "End date (YYYY-MM-DD)" },
+        locationId: { type: Type.STRING, description: "Filter by location ID" },
+        dateFrom: { type: Type.STRING, description: "Start date (YYYY-MM-DD)" },
+        dateTo: { type: Type.STRING, description: "End date (YYYY-MM-DD)" },
       },
     },
   },
@@ -54,9 +55,9 @@ const declarations: FunctionDeclaration[] = [
     description:
       "Retrieve a complete menu signage packet with all items, amendments, and review signatures. Use for detailed menu review.",
     parameters: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        packetId: { type: SchemaType.STRING, description: "The packet ID to retrieve" },
+        packetId: { type: Type.STRING, description: "The packet ID to retrieve" },
       },
       required: ["packetId"],
     },
@@ -65,15 +66,15 @@ const declarations: FunctionDeclaration[] = [
     name: "get_location_packets",
     description: "List menu signage packets, optionally filtered by location or status.",
     parameters: {
-      type: SchemaType.OBJECT,
+      type: Type.OBJECT,
       properties: {
-        locationId: { type: SchemaType.STRING, description: "Filter by location ID" },
+        locationId: { type: Type.STRING, description: "Filter by location ID" },
         status: {
-          type: SchemaType.STRING,
+          type: Type.STRING,
           description:
             "Filter by status: draft, published, for_final_review, finalized_for_service",
         },
-        limit: { type: SchemaType.NUMBER, description: "Max results (default 10)" },
+        limit: { type: Type.NUMBER, description: "Max results (default 10)" },
       },
     },
   },
@@ -81,12 +82,40 @@ const declarations: FunctionDeclaration[] = [
     name: "get_dashboard_stats",
     description:
       "Get today's operational overview: session counts, submission rates, recent activity, and pending items.",
-    parameters: { type: SchemaType.OBJECT, properties: {} },
+    parameters: { type: Type.OBJECT, properties: {} },
   },
   {
     name: "get_locations",
     description: "Get all locations with their campus information.",
-    parameters: { type: SchemaType.OBJECT, properties: {} },
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: "get_operational_audits",
+    description:
+      "Retrieve AI-assisted closing verification and temperature log audits, including potential issues that need manager review.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        locationId: { type: Type.STRING, description: "Filter by location ID" },
+        dateFrom: { type: Type.STRING, description: "Start date (YYYY-MM-DD)" },
+        dateTo: { type: Type.STRING, description: "End date (YYYY-MM-DD)" },
+        type: { type: Type.STRING, description: "Filter by closing or temperature_log" },
+        status: { type: Type.STRING, description: "Filter by audit status" },
+      },
+    },
+  },
+  {
+    name: "get_operational_risks",
+    description:
+      "Summarize current AI-assisted operational risks from tastings, closing photos, temperature logs, and open compliance issues.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        locationId: { type: Type.STRING, description: "Filter by location ID" },
+        dateFrom: { type: Type.STRING, description: "Start date (YYYY-MM-DD)" },
+        dateTo: { type: Type.STRING, description: "End date (YYYY-MM-DD)" },
+      },
+    },
   },
 ];
 
@@ -95,31 +124,58 @@ export const CHEFPRO_TOOLS: Tool[] = [{ functionDeclarations: declarations }];
 // ─── Tool Implementations ────────────────────────────────────────────────────
 
 type ToolArgs = Record<string, unknown>;
+export interface ToolContext {
+  user: EffectiveUserContext;
+}
 
-export async function executeTool(name: string, args: ToolArgs): Promise<unknown> {
+export async function executeTool(
+  name: string,
+  args: ToolArgs,
+  context: ToolContext
+): Promise<unknown> {
   switch (name) {
     case "get_tasting_sessions":
-      return getTastingSessions(args);
+      return getTastingSessions(args, context);
     case "get_rating_patterns":
-      return getRatingPatterns(args);
+      return getRatingPatterns(args, context);
     case "get_compliance_summary":
-      return getComplianceSummary(args);
+      return getComplianceSummary(args, context);
     case "get_menu_packet":
-      return getMenuPacket(args);
+      return getMenuPacket(args, context);
     case "get_location_packets":
-      return getLocationPackets(args);
+      return getLocationPackets(args, context);
     case "get_dashboard_stats":
-      return getDashboardStats();
+      return getDashboardStats(context);
     case "get_locations":
-      return getLocations();
+      return getLocations(context);
+    case "get_operational_audits":
+      return getOperationalAudits(args, context);
+    case "get_operational_risks":
+      return getOperationalRisks(args, context);
     default:
       return { error: `Unknown tool: ${name}` };
   }
 }
 
-async function getTastingSessions(args: ToolArgs) {
+function canViewAllLocations(context: ToolContext) {
+  return (
+    context.user.role === "fte" ||
+    hasPermission(context.user, "config.manage") ||
+    hasPermission(context.user, "compliance.manage")
+  );
+}
+
+function getScopedLocationFilter(args: ToolArgs, context: ToolContext) {
+  const requested = typeof args.locationId === "string" ? args.locationId : undefined;
+  if (canViewAllLocations(context)) return requested ? { equals: requested } : undefined;
+  if (requested && !context.user.locationIds.includes(requested)) return { in: ["__forbidden__"] };
+  return { in: context.user.locationIds.length > 0 ? context.user.locationIds : ["__none__"] };
+}
+
+async function getTastingSessions(args: ToolArgs, context: ToolContext) {
   const where: Record<string, unknown> = {};
-  if (args.locationId) where.locationId = args.locationId;
+  const locationFilter = getScopedLocationFilter(args, context);
+  if (locationFilter) where.locationId = locationFilter;
   if (args.status) where.status = args.status;
   if (args.dateFrom || args.dateTo) {
     where.date = {
@@ -153,8 +209,7 @@ async function getTastingSessions(args: ToolArgs) {
     location: s.location.name,
     period: s.tastingPeriod.name,
     chef: s.chef?.name ?? "Unknown",
-    checklistComplete:
-      s.checklistMenuPackage && s.checklistDigitalSignage && s.checklistFoodCards,
+    checklistComplete: s.checklistMenuPackage && s.checklistDigitalSignage && s.checklistFoodCards,
     itemCount: s.items.length,
     items: s.items.map((item) => ({
       dishName: item.dishName,
@@ -168,9 +223,10 @@ async function getTastingSessions(args: ToolArgs) {
   }));
 }
 
-async function getRatingPatterns(args: ToolArgs) {
+async function getRatingPatterns(args: ToolArgs, context: ToolContext) {
   const where: Record<string, unknown> = {};
-  if (args.locationId) where.session = { locationId: args.locationId };
+  const locationFilter = getScopedLocationFilter(args, context);
+  if (locationFilter) where.session = { locationId: locationFilter };
   if (args.dateFrom || args.dateTo) {
     where.session = {
       ...(where.session as object),
@@ -200,7 +256,8 @@ async function getRatingPatterns(args: ToolArgs) {
   for (const item of items) {
     const numericRatings = item.ratings.filter((r) => r.numericValue !== null);
     if (numericRatings.length === 0) continue;
-    const avg = numericRatings.reduce((s, r) => s + (r.numericValue ?? 0), 0) / numericRatings.length;
+    const avg =
+      numericRatings.reduce((s, r) => s + (r.numericValue ?? 0), 0) / numericRatings.length;
     const key = `${item.dishName}|${item.session.location.name}`;
     const existing = dishMap.get(key);
     if (existing) {
@@ -221,9 +278,10 @@ async function getRatingPatterns(args: ToolArgs) {
     .sort((a, b) => b.avgRating - a.avgRating);
 }
 
-async function getComplianceSummary(args: ToolArgs) {
+async function getComplianceSummary(args: ToolArgs, context: ToolContext) {
   const where: Record<string, unknown> = {};
-  if (args.locationId) where.locationId = args.locationId;
+  const locationFilter = getScopedLocationFilter(args, context);
+  if (locationFilter) where.locationId = locationFilter;
   if (args.dateFrom || args.dateTo) {
     where.date = {
       ...(args.dateFrom ? { gte: new Date(args.dateFrom as string) } : {}),
@@ -242,7 +300,7 @@ async function getComplianceSummary(args: ToolArgs) {
   const total = sessions.length;
   const submitted = sessions.filter((s) => s.status !== "draft").length;
   const checklistComplete = sessions.filter(
-    (s) => s.checklistMenuPackage && s.checklistDigitalSignage && s.checklistFoodCards,
+    (s) => s.checklistMenuPackage && s.checklistDigitalSignage && s.checklistFoodCards
   ).length;
   const allItems = sessions.flatMap((s) => s.items);
   const tempCompliant = allItems.filter((i) => i.temperatureCompliance === "compliant").length;
@@ -272,7 +330,7 @@ async function getComplianceSummary(args: ToolArgs) {
   };
 }
 
-async function getMenuPacket(args: ToolArgs) {
+async function getMenuPacket(args: ToolArgs, context: ToolContext) {
   const packet = await prisma.menuSignagePacket.findUnique({
     where: { id: args.packetId as string },
     include: {
@@ -289,6 +347,9 @@ async function getMenuPacket(args: ToolArgs) {
   });
 
   if (!packet) return { error: "Packet not found" };
+  if (!canViewAllLocations(context) && !context.user.locationIds.includes(packet.locationId)) {
+    return { error: "Packet not found" };
+  }
 
   const itemsByCategory = packet.items.reduce(
     (acc, item) => {
@@ -302,7 +363,7 @@ async function getMenuPacket(args: ToolArgs) {
       });
       return acc;
     },
-    {} as Record<string, unknown[]>,
+    {} as Record<string, unknown[]>
   );
 
   return {
@@ -329,9 +390,10 @@ async function getMenuPacket(args: ToolArgs) {
   };
 }
 
-async function getLocationPackets(args: ToolArgs) {
+async function getLocationPackets(args: ToolArgs, context: ToolContext) {
   const where: Record<string, unknown> = {};
-  if (args.locationId) where.locationId = args.locationId;
+  const locationFilter = getScopedLocationFilter(args, context);
+  if (locationFilter) where.locationId = locationFilter;
   if (args.status) where.status = args.status;
 
   const packets = await prisma.menuSignagePacket.findMany({
@@ -355,19 +417,30 @@ async function getLocationPackets(args: ToolArgs) {
   }));
 }
 
-async function getDashboardStats() {
+async function getDashboardStats(context: ToolContext) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const locationFilter = getScopedLocationFilter({}, context);
+  const locationWhere = locationFilter ? { locationId: locationFilter } : {};
 
   const [totalSessions, submittedToday, pendingPackets, recentAmendments] = await Promise.all([
-    prisma.tastingSession.count({ where: { date: { gte: today, lt: tomorrow } } }),
     prisma.tastingSession.count({
-      where: { date: { gte: today, lt: tomorrow }, status: { not: "draft" } },
+      where: { ...locationWhere, date: { gte: today, lt: tomorrow } },
     }),
-    prisma.menuSignagePacket.count({ where: { status: { in: ["draft", "published"] } } }),
-    prisma.packetAmendment.count({ where: { status: "pending" } }),
+    prisma.tastingSession.count({
+      where: { ...locationWhere, date: { gte: today, lt: tomorrow }, status: { not: "draft" } },
+    }),
+    prisma.menuSignagePacket.count({
+      where: { ...locationWhere, status: { in: ["draft", "published"] } },
+    }),
+    prisma.packetAmendment.count({
+      where: {
+        status: "pending",
+        ...(locationFilter ? { packet: { locationId: locationFilter } } : {}),
+      },
+    }),
   ]);
 
   return {
@@ -379,8 +452,10 @@ async function getDashboardStats() {
   };
 }
 
-async function getLocations() {
+async function getLocations(context: ToolContext) {
+  const locationFilter = getScopedLocationFilter({}, context);
   const locations = await prisma.location.findMany({
+    where: locationFilter ? { id: locationFilter } : undefined,
     include: { building: { include: { campus: { select: { name: true } } } } },
     orderBy: { name: "asc" },
   });
@@ -391,4 +466,125 @@ async function getLocations() {
     building: l.building?.name ?? null,
     campus: l.building?.campus.name ?? null,
   }));
+}
+
+async function getOperationalAudits(args: ToolArgs, context: ToolContext) {
+  if (
+    !hasPermission(context.user, "compliance.view") &&
+    !hasPermission(context.user, "compliance.manage")
+  ) {
+    return { error: "Not authorized to view compliance audits" };
+  }
+
+  const locationFilter = getScopedLocationFilter(args, context);
+  const where: Record<string, unknown> = {};
+  if (locationFilter) where.locationId = locationFilter;
+  if (args.type) where.type = args.type;
+  if (args.status) where.status = args.status;
+  if (args.dateFrom || args.dateTo) {
+    where.auditDate = {
+      ...(args.dateFrom ? { gte: new Date(args.dateFrom as string) } : {}),
+      ...(args.dateTo ? { lte: new Date(args.dateTo as string) } : {}),
+    };
+  }
+
+  const audits = await prisma.operationalAudit.findMany({
+    where,
+    orderBy: { auditDate: "desc" },
+    take: 30,
+    include: {
+      location: { select: { name: true } },
+      submittedBy: { select: { name: true } },
+      closingPhotos: { select: { category: true, cleanlinessScore: true, confidence: true } },
+      temperatureLog: {
+        select: {
+          entries: {
+            select: {
+              stationName: true,
+              itemName: true,
+              holdingType: true,
+              temperatureF: true,
+              complianceStatus: true,
+              confidence: true,
+            },
+            take: 20,
+          },
+        },
+      },
+      issues: {
+        where: { status: { in: ["open", "acknowledged"] } },
+        select: { severity: true, type: true, title: true, confidence: true },
+        take: 20,
+      },
+    },
+  });
+
+  return audits.map((audit) => ({
+    id: audit.id,
+    type: audit.type,
+    date: audit.auditDate,
+    status: audit.status,
+    location: audit.location.name,
+    submittedBy: audit.submittedBy.name,
+    summary: audit.summary,
+    needsHumanReview: audit.needsHumanReview,
+    closingPhotoCount: audit.closingPhotos.length,
+    temperatureEntryCount: audit.temperatureLog?.entries.length ?? 0,
+    openIssueCount: audit.issues.length,
+    issues: audit.issues,
+  }));
+}
+
+async function getOperationalRisks(args: ToolArgs, context: ToolContext) {
+  if (
+    !hasPermission(context.user, "compliance.view") &&
+    !hasPermission(context.user, "compliance.manage")
+  ) {
+    return { error: "Not authorized to view operational risks" };
+  }
+
+  const today = new Date();
+  const dateFrom = args.dateFrom ? new Date(args.dateFrom as string) : today;
+  const dateTo = args.dateTo ? new Date(args.dateTo as string) : today;
+  const locationFilter = getScopedLocationFilter(args, context);
+
+  const [audits, issues, tastingCompliance] = await Promise.all([
+    prisma.operationalAudit.findMany({
+      where: {
+        ...(locationFilter ? { locationId: locationFilter } : {}),
+        auditDate: { gte: dateFrom, lte: dateTo },
+      },
+      include: { location: { select: { name: true } } },
+      take: 50,
+    }),
+    prisma.complianceIssue.findMany({
+      where: {
+        status: { in: ["open", "acknowledged"] },
+        audit: {
+          ...(locationFilter ? { locationId: locationFilter } : {}),
+          auditDate: { gte: dateFrom, lte: dateTo },
+        },
+      },
+      include: { audit: { include: { location: { select: { name: true } } } } },
+      orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
+      take: 30,
+    }),
+    getComplianceSummary(args, context),
+  ]);
+
+  return {
+    dateFrom: dateFrom.toISOString().split("T")[0],
+    dateTo: dateTo.toISOString().split("T")[0],
+    auditCount: audits.length,
+    auditsNeedingReview: audits.filter((a) => a.needsHumanReview).length,
+    openIssues: issues.map((issue) => ({
+      severity: issue.severity,
+      type: issue.type,
+      title: issue.title,
+      location: issue.audit.location.name,
+      auditType: issue.audit.type,
+      confidence: issue.confidence,
+    })),
+    tastingCompliance,
+  };
 }

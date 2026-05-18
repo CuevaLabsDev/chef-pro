@@ -22,10 +22,10 @@ Follow the template in `docs/patterns/api-route.md` exactly:
 
 - [ ] Import `requireAuth` (or `requirePermission`) from `@/modules/identity-access/middleware`
 - [ ] Import `hasPermission` from `@/modules/identity-access/service` (if fine-grained check needed)
-- [ ] Import the relevant Zod schema from `@/lib/validations`
+- [ ] Import the relevant Zod schema from `@/lib/validations`, or define a route-local schema for route-only actions
 - [ ] Import the service function from `@/modules/<module>/service`
 - [ ] Import `handleServiceError` from `@/lib/api-errors`
-- [ ] Import `createAuditEvent` from `@/modules/audit/service` (if write operation)
+- [ ] Import `createAuditEvent` from `@/modules/audit/service` if the route uses generic audit events
 
 ## Step 4: Implement Each HTTP Method
 
@@ -34,16 +34,18 @@ For each method (GET, POST, PATCH, DELETE):
 - [ ] Start with auth guard: `const { error, user } = await requireAuth()`
 - [ ] Guard: `if (error || !user) return error!`
 - [ ] Permission check: `if (!hasPermission(user, "key")) return 403`
-- [ ] For writes: parse body with `safeParse`, return 400 on failure
+- [ ] For JSON writes: parse body with `safeParse`, return 400 on failure
+- [ ] For `FormData`: validate required fields and `File` values explicitly
 - [ ] Call service function (never write Prisma queries here)
-- [ ] For writes: fire-and-forget `createAuditEvent(...).catch(() => {})`
+- [ ] For writes: add generic audit event or document module-owned audit trail
 - [ ] Wrap service call in try/catch, return `handleServiceError(err)`
 
 ## Step 5: Add Zod Schema (if new)
 
 If the endpoint accepts a request body that doesn't have an existing schema:
 
-- [ ] Add schema to `src/lib/validations.ts`
+- [ ] Add reusable schemas to `src/lib/validations.ts`
+- [ ] Use route-local schemas only for narrow route-only actions
 - [ ] Follow naming: `create<Entity>Schema`, `update<Entity>Schema`
 - [ ] See `docs/patterns/validation.md`
 
@@ -70,4 +72,6 @@ npm test
 - Forgetting the auth guard on any method.
 - Forgetting to await `params` on dynamic route segments.
 - Returning raw Prisma errors to the client (use `handleServiceError`).
-- Skipping the audit event on write operations.
+- Skipping audit coverage on write operations.
+- Forgetting to document SSE event types for streaming routes.
+- Claiming all write routes use generic `AuditEvent` when the module owns a specialized audit trail.

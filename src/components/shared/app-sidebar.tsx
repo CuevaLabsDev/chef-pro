@@ -30,6 +30,8 @@ import {
   Utensils,
   ClipboardList,
   Bot,
+  ShieldCheck,
+  Upload as UploadIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -106,6 +108,24 @@ const NAV_ITEMS: NavItem[] = [
         label: "Setup",
         icon: SlidersHorizontal,
         permissionKey: "counts.configure",
+      },
+    ],
+  },
+  {
+    label: "Compliance",
+    icon: ShieldCheck,
+    children: [
+      {
+        href: "/compliance",
+        label: "Uploads",
+        icon: UploadIcon,
+        permissionKey: "compliance.record",
+      },
+      {
+        href: "/ops/compliance",
+        label: "Audits",
+        icon: ShieldCheck,
+        permissionKey: "compliance.view",
       },
     ],
   },
@@ -561,11 +581,11 @@ function MobileSidebar({ user }: { user: AppSidebarProps["user"] }) {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="border-b border-sidebar-border px-4 h-14 flex flex-row items-center">
+        <SheetHeader className="flex h-14 shrink-0 flex-row items-center justify-center gap-2 border-b border-sidebar-border p-0 px-4">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
             CP
           </div>
-          <SheetTitle className="text-base font-semibold">ChefPro</SheetTitle>
+          <SheetTitle className="text-base font-semibold leading-none">ChefPro</SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-1 px-3 py-4">
           {NAV_ITEMS.map((item) => {
@@ -666,7 +686,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </div>
       </aside>
 
-      <header className="md:hidden sticky top-0 z-50 flex items-center gap-3 border-b border-border bg-card px-4 h-14">
+      <header className="md:hidden sticky top-0 z-50 flex w-full shrink-0 items-center gap-3 border-b border-border bg-card px-4 h-14">
         <MobileSidebar user={user} />
         <Link href={defaultHref} className="flex items-center gap-2">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">

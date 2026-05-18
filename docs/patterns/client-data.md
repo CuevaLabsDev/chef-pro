@@ -86,6 +86,8 @@ export default function CreateCampusForm() {
 3. On failure: shows error toast with the server's error message
 4. `loading` is `true` while the request is in flight
 
+For `FormData` uploads or streaming endpoints, use `fetch` directly in the component/page and document the exception in the owning module doc. The current compliance upload page posts `FormData`, and the AI chat page consumes a server-sent event stream.
+
 ## SWR Key Conventions
 
 SWR keys are the URL strings passed to `useApi`. When invalidating after a mutation, match the exact URL:
@@ -107,3 +109,4 @@ To invalidate a list after creating an item, include the list URL in `invalidate
 3. **Invalidate related keys.** After creating a campus, invalidate `/api/config/campuses` so the list refreshes.
 4. **Conditional fetch with null.** Don't fetch until you have required parameters.
 5. **No server imports.** Client components must never import from `@/lib/db`, `@/modules/*/service`, or server-only code.
+6. **Use direct fetch for non-JSON protocols.** `useMutation` is for JSON-style mutations; use direct `fetch` for `FormData` and SSE streams.

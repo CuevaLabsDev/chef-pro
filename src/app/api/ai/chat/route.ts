@@ -12,7 +12,7 @@ import { z } from "zod";
 
 const chatRequestSchema = z.object({
   message: z.string().min(1).max(2000),
-  sessionId: z.string().optional(),
+  sessionId: z.string().nullish(),
 });
 
 export async function POST(req: NextRequest) {
@@ -54,10 +54,10 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       try {
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "session", sessionId })}\n\n`),
+          encoder.encode(`data: ${JSON.stringify({ type: "session", sessionId })}\n\n`)
         );
 
-        for await (const chunk of runOrchestratorStream(message, conversationHistory)) {
+        for await (const chunk of runOrchestratorStream(message, conversationHistory, { user })) {
           controller.enqueue(encoder.encode(chunk));
 
           try {
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "AI service error";
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "error", error: errorMsg })}\n\n`),
+          encoder.encode(`data: ${JSON.stringify({ type: "error", error: errorMsg })}\n\n`)
         );
       } finally {
         controller.close();

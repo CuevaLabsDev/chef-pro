@@ -1,55 +1,40 @@
-import { getModel } from "../client";
-import { CHEFPRO_TOOLS, executeTool } from "../tools";
-
-const SYSTEM_PROMPT = `You are the ChefPro Ops Assistant — an AI assistant for food service operations leadership.
-
-You have full read access to the ChefPro platform: tasting sessions, menu signage packets, compliance data, locations, and daily statistics.
-
-You can answer any operational question by querying live data with your tools. Be helpful, precise, and proactive — if you spot issues while answering a question, mention them.
-
-Guidelines:
-- Always use tools to ground your answers in real data, not assumptions
-- For "how are things today" or "give me an overview" — call get_dashboard_stats and get_compliance_summary
-- For location-specific questions, first call get_locations to get the correct IDs
-- Keep answers concise but complete; use bullet points for lists
-- If data shows a concern (low ratings, missed submissions, pending amendments), flag it clearly
-
-You represent the entire ChefPro platform. Be the knowledgeable ops partner that managers rely on.`;
+import { createAgentChat, getResponseText, toFunctionResponseContent } from "../client";
+import { OPS_ASSISTANT_PROMPT } from "../prompts";
+import { CHEFPRO_TOOLS, executeTool, type ToolContext } from "../tools";
 
 export async function runOpsAssistantAgent(
   userMessage: string,
   history: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>,
+  context: ToolContext
 ): Promise<string> {
-  const model = getModel();
-  const chat = model.startChat({
+  const chat = createAgentChat({
     history,
     tools: CHEFPRO_TOOLS,
-    systemInstruction: SYSTEM_PROMPT,
+    systemInstruction: OPS_ASSISTANT_PROMPT,
   });
 
-  let response = await chat.sendMessage(userMessage);
+  let response = await chat.sendMessage({ message: userMessage });
 
   while (true) {
-    const candidate = response.response.candidates?.[0];
-    if (!candidate) break;
-
-    const functionCalls = candidate.content.parts
-      .filter((p) => p.functionCall)
-      .map((p) => p.functionCall!);
-
+    const functionCalls = response.functionCalls ?? [];
     if (functionCalls.length === 0) break;
 
     const toolResults = await Promise.all(
       functionCalls.map(async (fc) => ({
-        functionResponse: {
-          name: fc.name,
-          response: { result: await executeTool(fc.name, (fc.args as Record<string, unknown>) ?? {}) },
+        id: fc.id,
+        name: fc.name ?? "",
+        response: {
+          result: await executeTool(
+            fc.name ?? "",
+            (fc.args as Record<string, unknown>) ?? {},
+            context
+          ),
         },
-      })),
+      }))
     );
 
-    response = await chat.sendMessage(toolResults);
+    response = await chat.sendMessage({ message: toFunctionResponseContent(toolResults) as never });
   }
 
-  return response.response.text();
+  return getResponseText(response);
 }

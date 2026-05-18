@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/modules/identity-access/middleware";
-import {
-  runOrchestrator,
-  saveInsightReport,
-  listInsightReports,
-} from "@/modules/ai-agents";
-import type { InsightType } from "@/modules/ai-agents";
+import { runOrchestrator, saveInsightReport, listInsightReports } from "@/modules/ai-agents";
+import type { AgentName, InsightType } from "@/modules/ai-agents";
 import { z } from "zod";
 
 const insightRequestSchema = z.object({
@@ -14,17 +10,59 @@ const insightRequestSchema = z.object({
 });
 
 const INSIGHT_PROMPTS: Record<InsightType, (entityId?: string) => string> = {
-  tasting_analysis:
-    (_entityId) =>
-      "Generate a comprehensive tasting analysis report. Include: overall rating averages by location, top-performing and underperforming dishes, temperature compliance rates, checklist completion rates, and 3 specific actionable recommendations for improvement. Use data from the last 30 days.",
+  tasting_analysis: () =>
+    "Generate a comprehensive tasting analysis report. Include: overall rating averages by location, top-performing and underperforming dishes, temperature compliance rates, checklist completion rates, and 3 specific actionable recommendations for improvement. Use data from the last 30 days.",
   menu_review: (entityId) =>
     entityId
       ? `Review menu packet ${entityId} thoroughly. Check all categories for completeness, identify missing information, flag pending amendments, and provide a readiness assessment.`
       : "Review all recent menu signage packets. Identify any that have issues, missing items, or pending amendments requiring attention.",
-  compliance_summary:
-    (_entityId) =>
-      "Generate a compliance summary report covering: session submission rates by location, temperature compliance trends, checklist completion rates, any locations consistently missing deadlines, and recommendations to improve compliance. Focus on the last 14 days.",
+  compliance_summary: () =>
+    "Generate a compliance summary report covering: session submission rates by location, temperature compliance trends, checklist completion rates, any locations consistently missing deadlines, and recommendations to improve compliance. Focus on the last 14 days.",
 };
+
+const INSIGHT_AGENTS: Record<InsightType, AgentName> = {
+  tasting_analysis: "tasting-intelligence",
+  menu_review: "menu-review",
+  compliance_summary: "ops-assistant",
+};
+
+function parseRetryAfterSeconds(message: string) {
+  const retryMatch = message.match(/retryDelay"?\s*:?\s*"?(\d+(?:\.\d+)?)s/i);
+  if (retryMatch?.[1]) return Math.ceil(Number(retryMatch[1]));
+
+  const textMatch = message.match(/retry in (\d+(?:\.\d+)?)s/i);
+  if (textMatch?.[1]) return Math.ceil(Number(textMatch[1]));
+
+  return undefined;
+}
+
+function getAiErrorResponse(err: unknown) {
+  const status =
+    typeof (err as { status?: unknown })?.status === "number"
+      ? (err as { status: number }).status
+      : 500;
+  const rawMessage = err instanceof Error ? err.message : "AI service error";
+  const isQuotaError =
+    status === 429 ||
+    rawMessage.includes("RESOURCE_EXHAUSTED") ||
+    rawMessage.toLowerCase().includes("quota exceeded");
+
+  if (!isQuotaError) {
+    return NextResponse.json({ error: rawMessage }, { status: 500 });
+  }
+
+  const retryAfterSeconds = parseRetryAfterSeconds(rawMessage);
+  const headers = retryAfterSeconds ? { "Retry-After": String(retryAfterSeconds) } : undefined;
+  return NextResponse.json(
+    {
+      error: retryAfterSeconds
+        ? `Gemini quota exceeded. Retry in ${retryAfterSeconds} seconds.`
+        : "Gemini quota exceeded. Please retry shortly.",
+      retryAfterSeconds,
+    },
+    { status: 429, headers }
+  );
+}
 
 export async function POST(req: NextRequest) {
   const { error, user } = await requireAuth();
@@ -44,7 +82,16 @@ export async function POST(req: NextRequest) {
   const prompt = INSIGHT_PROMPTS[type](entityId);
 
   try {
-    const { response, agentUsed } = await runOrchestrator(prompt, []);
+    const { response, agentUsed } = await runOrchestrator(
+      prompt,
+      [],
+      { user },
+      INSIGHT_AGENTS[type]
+    );
+    if (!response.trim()) {
+      throw new Error("AI generated an empty insight report");
+    }
+
     const report = await saveInsightReport({
       userId: user.id,
       type,
@@ -55,8 +102,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(report, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "AI service error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return getAiErrorResponse(err);
   }
 }
 

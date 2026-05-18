@@ -43,15 +43,19 @@ Font: **Geist** via `next/font/google`, set as `--font-geist-sans` CSS variable.
 
 Used via the `statusColor()` utility in `src/lib/utils.ts`:
 
-| Status        | Classes                         |
-| ------------- | ------------------------------- |
-| draft         | `bg-gray-100 text-gray-700`     |
-| submitted     | `bg-blue-100 text-blue-700`     |
-| reviewed      | `bg-green-100 text-green-700`   |
-| locked        | `bg-purple-100 text-purple-700` |
-| compliant     | `bg-green-100 text-green-700`   |
-| non_compliant | `bg-red-100 text-red-700`       |
-| not_checked   | `bg-yellow-100 text-yellow-700` |
+| Status          | Classes                         |
+| --------------- | ------------------------------- |
+| draft           | `bg-gray-100 text-gray-700`     |
+| submitted       | `bg-blue-100 text-blue-700`     |
+| reviewed        | `bg-green-100 text-green-700`   |
+| locked          | `bg-purple-100 text-purple-700` |
+| compliant       | `bg-green-100 text-green-700`   |
+| non_compliant   | `bg-red-100 text-red-700`       |
+| not_checked     | `bg-yellow-100 text-yellow-700` |
+| potential_issue | `bg-red-100 text-red-700`       |
+| needs_review    | `bg-yellow-100 text-yellow-700` |
+| failed          | `bg-red-100 text-red-700`       |
+| processing      | `bg-blue-100 text-blue-700`     |
 
 These are passed as `className` to the `<Badge>` component.
 
@@ -70,18 +74,25 @@ Mobile-first design. Breakpoints follow Tailwind defaults:
 
 ### Portal Container Widths
 
-| Portal           | Container Class | Description                                     |
-| ---------------- | --------------- | ----------------------------------------------- |
-| **Chef**         | `max-w-lg`      | 32rem — optimized for phone-width one-hand use  |
-| **Ops**          | `max-w-6xl`     | 72rem — desktop dashboard with data tables      |
-| **Menu Signage** | `max-w-7xl`     | 80rem — wide layout for menu signage management |
+| Portal                 | Container Class | Description                                     |
+| ---------------------- | --------------- | ----------------------------------------------- |
+| **Chef**               | `max-w-lg`      | 32rem — optimized for phone-width one-hand use  |
+| **Ops**                | `max-w-6xl`     | 72rem — desktop dashboard with data tables      |
+| **Menu Signage**       | `max-w-7xl`     | 80rem — wide layout for menu signage management |
+| **Daily Counts**       | `max-w-6xl`     | Data-entry and history layouts                  |
+| **Compliance Uploads** | `max-w-5xl`     | Staff upload workflow for evidence              |
+| **Compliance Audits**  | `max-w-7xl`     | Manager review table and detail panel           |
+| **AI Assistant**       | `max-w-6xl`     | Chat panel and session/report views             |
 
 ### Mobile Patterns
 
 - **Chef portal**: Bottom tab navigation with icons, `pb-[env(safe-area-inset-bottom)]` for notch-safe spacing
-- **Ops portal**: Hamburger menu (Sheet sliding from right) on mobile, full top nav bar on `md:` breakpoint
+- **App shell / sidebar**: Shared collapsible sidebar with grouped navigation and tooltips when collapsed
+- **Ops portal**: Shared shell layout for management pages
 - **Cards**: Full-width on mobile, no horizontal margin in the card itself (container handles padding)
 - **Forms**: Stacked vertically, full-width inputs, submit button at bottom
+- **Upload flows**: Use direct `fetch` with `FormData`, visible loading/disabled states, and toast feedback
+- **AI chat**: Consume SSE streams, append text chunks incrementally, and show tool-call/agent state where exposed
 
 ---
 
@@ -105,12 +116,13 @@ All components live in `src/components/ui/`. They follow the shadcn/ui pattern: 
 
 ### Containers
 
-| Component | File         | Parts                                                                                                                                                    |
-| --------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Card      | `card.tsx`   | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`                                                                        |
-| Dialog    | `dialog.tsx` | `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`                            |
-| Sheet     | `sheet.tsx`  | `Sheet`, `SheetTrigger`, `SheetContent` (`side`: top, bottom, left, right), `SheetHeader`, `SheetTitle`, `SheetDescription`, `SheetFooter`, `SheetClose` |
-| Tabs      | `tabs.tsx`   | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`                                                                                                         |
+| Component | File          | Parts                                                                                                                                                    |
+| --------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Card      | `card.tsx`    | `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`                                                                        |
+| Dialog    | `dialog.tsx`  | `Dialog`, `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`                            |
+| Sheet     | `sheet.tsx`   | `Sheet`, `SheetTrigger`, `SheetContent` (`side`: top, bottom, left, right), `SheetHeader`, `SheetTitle`, `SheetDescription`, `SheetFooter`, `SheetClose` |
+| Tabs      | `tabs.tsx`    | `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`                                                                                                         |
+| Tooltip   | `tooltip.tsx` | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider`; used for collapsed sidebar and icon affordances                                        |
 
 ### Data Display
 
@@ -178,6 +190,25 @@ Stacked form fields with submit button at bottom:
   <Button type="submit">Save</Button>
 </form>
 ```
+
+### Operational Review Layout
+
+Operational compliance review pages use a split scan/detail pattern:
+
+- Filter controls at the top of the page.
+- Summary cards for high-level counts.
+- A table for audit rows with stable status badges.
+- A detail panel for selected audit assets, AI-assisted summary, entries, and issues.
+- Asset links must request signed URLs through the API instead of exposing bucket objects directly.
+
+### AI Chat Layout
+
+AI chat pages should treat streaming as a first-class state:
+
+- Show the session once the `session` SSE event arrives.
+- Append `text` chunks incrementally.
+- Show selected agent/tool-call state without inventing data.
+- Handle `error` events as recoverable UI errors.
 
 ### Data Table
 

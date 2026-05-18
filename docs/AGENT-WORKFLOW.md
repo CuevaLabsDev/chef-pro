@@ -5,8 +5,8 @@ Step-by-step guide for AI agents working in the ChefPro codebase. Follow this be
 ## Before Coding
 
 1. **Read the relevant docs**. If you're touching domain logic, read `docs/ARCHITECTURE.md`. If you're working with types or APIs, read `docs/DATA-CONTRACTS.md`. If you're building UI, read `docs/UI-SYSTEM.md`.
-2. **Check `.cursor/rules/`**. Three always-applied rules govern every session: `core-dev-workflow.mdc`, `module-boundaries.mdc`, `prisma-data-safety.mdc`.
-3. **Identify the owning module**. Every feature belongs to one of the 10 modules under `src/modules/`. Find it before writing code.
+2. **Check local agent guidance if present**. Some environments may include `AGENTS.md` or `.cursor/rules/`; do not assume they exist.
+3. **Identify the owning module**. Inspect `src/modules/` and the relevant `docs/modules/<name>.md` before writing code.
 
 ## Discovery Checklist
 
@@ -33,17 +33,19 @@ Before implementing a feature, answer these questions:
 
 ### Adding validation
 
-1. Add or extend a Zod schema in `src/lib/validations.ts`.
+1. Add or extend a Zod schema in `src/lib/validations.ts` for shared client/API contracts. Route-local schemas are allowed for route-only actions, and service-local schemas are allowed for AI structured-output validation.
 2. Use `.safeParse()` in the API route handler. Return 400 on failure.
+3. For `FormData` uploads, manually validate required fields, file presence, MIME type, and size before or inside the service.
 
 ### Adding an API route
 
 1. Create `src/app/api/<resource>/route.ts`.
 2. Use `requireAuth()` or `requirePermission()` from `modules/identity-access/middleware.ts`.
-3. Validate request body with Zod.
+3. Validate request body with Zod, or validate `FormData` fields explicitly for upload routes.
 4. Delegate to the module service.
 5. Return the result as JSON.
-6. If the route publishes domain events, call `ensureSubscriptions()` at module scope.
+6. If the route streams server-sent events, document the event `type` payloads in `DATA-CONTRACTS.md`.
+7. If the route publishes domain events, call `ensureSubscriptions()` at module scope.
 
 ### Adding UI
 
@@ -61,6 +63,13 @@ Before implementing a feature, answer these questions:
 4. Prefer additive changes (new fields with defaults, new optional relations). Avoid destructive removals.
 5. Update `docs/DATA-CONTRACTS.md` if models, fields, or relationships change.
 
+### Changing AI behavior
+
+1. Update prompts, tools, model defaults, or structured-output schemas in the owning AI module.
+2. Bump or document prompt/schema version changes when stored with generated records.
+3. Update `docs/modules/ai-agents.md`, `docs/modules/operational-compliance.md`, and `docs/DATA-CONTRACTS.md` when route, tool, prompt, or model contracts change.
+4. Keep AI compliance wording as "AI-assisted potential issue" and "needs manager review"; do not describe AI findings as regulatory conclusions.
+
 ## Definition of Done
 
 Every change must satisfy all of these before it's considered complete:
@@ -73,6 +82,7 @@ Every change must satisfy all of these before it's considered complete:
 - [ ] `docs/DATA-CONTRACTS.md` updated if any contracts changed (Prisma models, Zod schemas, API shapes, module types)
 - [ ] `docs/ARCHITECTURE.md` updated if new modules or structural changes
 - [ ] `docs/UI-SYSTEM.md` updated if new components or layout patterns
+- [ ] Module docs updated if service exports, workflows, storage, permissions, or side effects changed
 
 ## Common Pitfalls
 
@@ -99,6 +109,12 @@ Any API route that causes a domain event to be published must call `ensureSubscr
 ### Bypassing Zod validation
 
 All user-provided data must go through a Zod schema before reaching service functions. Never pass raw `req.json()` directly to a service.
+
+For upload routes, `FormData` cannot always be represented by a shared JSON schema. Validate required fields and files explicitly, then let the service enforce file constraints.
+
+### Overstating audit behavior
+
+Generic `AuditEvent` rows are the default mutation audit trail, but modules may own specialized audit records. Operational compliance currently uses `OperationalAudit`, `OperationalAuditAsset`, and `ComplianceIssue` records and does not emit generic `AuditEvent` rows or domain events.
 
 ## Quick Commands
 

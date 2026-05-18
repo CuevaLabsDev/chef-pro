@@ -74,6 +74,13 @@ Currently called in the tasting and review API route files.
 3. **Register once.** `ensureSubscriptions()` is idempotent; call it wherever needed without worry.
 4. **In-memory only.** Events are not persisted. If the process restarts, in-flight events are lost. This is acceptable for the current use cases (audit + notifications).
 
+## Current Non-Emitters
+
+`ai-agents`, `daily-counts`, and `operational-compliance` do not currently publish domain events.
+
+- Daily count API routes create generic `AuditEvent` rows directly.
+- Operational compliance stores module-owned audit/evidence/issue records and does not currently emit generic `AuditEvent` rows or domain events.
+
 ## Adding a New Event
 
 See `workflows/add-domain-event.md` for the step-by-step process.

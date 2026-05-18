@@ -39,7 +39,6 @@ const SUGGESTED_PROMPTS = [
   "Give me today's operational overview",
   "How did tasting sessions perform this week?",
   "Review the latest menu packet",
-  "Which locations have the lowest compliance rates?",
 ];
 
 export function AiChatPanel({ initialSessionId }: { initialSessionId?: string }) {
@@ -49,11 +48,18 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId ?? null);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [toolsInProgress, setToolsInProgress] = useState<string[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const sendMessage = useCallback(
@@ -74,11 +80,23 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
         const res = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, sessionId }),
+          body: JSON.stringify({
+            message: text,
+            ...(sessionId ? { sessionId } : {}),
+          }),
         });
 
         if (!res.ok) {
-          throw new Error(`Request failed: ${res.status}`);
+          let detail = `Request failed (${res.status})`;
+          try {
+            const body = (await res.json()) as { error?: string | { message?: string } };
+            if (typeof body.error === "string") detail = body.error;
+            else if (res.status === 403) detail = "You don't have access to the AI assistant.";
+            else if (res.status === 401) detail = "Please sign in again.";
+          } catch {
+            // response body wasn't JSON
+          }
+          throw new Error(detail);
         }
 
         const reader = res.body!.getReader();
@@ -155,13 +173,17 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
           }
         }
       } catch (err) {
+        const message =
+          err instanceof Error && err.message
+            ? err.message
+            : "Something went wrong. Please try again.";
         setMessages((prev) => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === "model") {
             updated[updated.length - 1] = {
               ...last,
-              content: `Something went wrong. Please try again.`,
+              content: message,
               streaming: false,
             };
           }
@@ -174,7 +196,7 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
         textareaRef.current?.focus();
       }
     },
-    [isStreaming, sessionId],
+    [isStreaming, sessionId]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -199,10 +221,7 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
                 <Loader2 className="size-3 animate-spin" />
                 {AGENT_LABELS[activeAgent] ?? "Thinking"} agent is working...
                 {toolsInProgress.length > 0 && (
-                  <span className="text-primary">
-                    {" "}
-                    · querying {toolsInProgress.join(", ")}
-                  </span>
+                  <span className="text-primary"> · querying {toolsInProgress.join(", ")}</span>
                 )}
               </span>
             ) : (
@@ -213,9 +232,9 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
+          <div className="flex flex-col items-center gap-6 py-8 text-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10">
               <Bot className="size-8 text-primary" />
             </div>
@@ -256,7 +275,7 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
                 "max-w-[80%] rounded-xl px-4 py-2.5 text-sm",
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground",
+                  : "bg-muted text-foreground"
               )}
             >
               {msg.role === "model" && msg.content === "" && msg.streaming ? (
@@ -285,30 +304,34 @@ export function AiChatPanel({ initialSessionId }: { initialSessionId?: string })
           </div>
         ))}
 
-        <div ref={bottomRef} />
+        {messages.length > 0 && <div ref={bottomRef} />}
       </div>
 
       {/* Input */}
       <div className="border-t border-border px-4 py-3">
-        <div className="flex gap-2 items-end">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about tasting performance, menu packets, compliance..."
-            className="min-h-[44px] max-h-32 resize-none text-sm"
-            rows={1}
-            disabled={isStreaming}
-          />
-          <Button
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || isStreaming}
-            size="icon"
-            className="shrink-0"
-          >
-            {isStreaming ? <Loader2 className="animate-spin" /> : <Send />}
-          </Button>
+        <div className="flex flex-col gap-2">
+          <div className="w-full">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about tasting performance, menu packets, compliance..."
+              className="min-h-[120px] max-h-56 resize-none text-sm"
+              rows={4}
+              disabled={isStreaming}
+            />
+          </div>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || isStreaming}
+              size="icon"
+              className="shrink-0"
+            >
+              {isStreaming ? <Loader2 className="animate-spin" /> : <Send />}
+            </Button>
+          </div>
         </div>
         <div className="mt-1.5 text-[10px] text-muted-foreground text-center">
           Enter to send · Shift+Enter for new line

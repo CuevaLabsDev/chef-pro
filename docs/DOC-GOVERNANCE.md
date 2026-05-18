@@ -7,7 +7,7 @@ Rules for keeping the `docs/` folder accurate and useful. Every agent and human 
 | Document                 | Purpose                                        | Source Files It Mirrors                                                                               |
 | ------------------------ | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `docs/ARCHITECTURE.md`   | System structure, module map, dependency rules | `src/modules/*/`, `src/app/`, `prisma/schema.prisma`                                                  |
-| `docs/AGENT-WORKFLOW.md` | How agents should operate in this codebase     | `.cursor/rules/*.mdc`, `AGENTS.md`, all module patterns                                               |
+| `docs/AGENT-WORKFLOW.md` | How agents should operate in this codebase     | `AGENTS.md` / `.cursor/rules/*.mdc` when present, all module patterns                                 |
 | `docs/DATA-CONTRACTS.md` | All data shapes, validation, API contracts     | `prisma/schema.prisma`, `src/modules/*/types.ts`, `src/lib/validations.ts`, `src/app/api/**/route.ts` |
 | `docs/DOC-GOVERNANCE.md` | This file — rules for doc maintenance          | (self-referencing)                                                                                    |
 | `docs/UI-SYSTEM.md`      | Design tokens, components, layout patterns     | `src/components/ui/`, `src/app/globals.css`, portal layouts                                           |
@@ -24,11 +24,16 @@ When you change source code, check whether the corresponding doc needs updating:
 | `src/app/api/**/route.ts` (new/changed route)     | `DATA-CONTRACTS.md` — API Route Reference section                                 |
 | `src/modules/events/types.ts` (new event type)    | `DATA-CONTRACTS.md` — Domain Events section + `ARCHITECTURE.md` — Event Bus table |
 | New module under `src/modules/`                   | `ARCHITECTURE.md` — Module Map table                                              |
-| New portal or layout change                       | `ARCHITECTURE.md` — Three Portals section                                         |
+| New portal or layout change                       | `ARCHITECTURE.md` and `UI-SYSTEM.md` portal/layout sections                       |
 | New UI component in `src/components/ui/`          | `UI-SYSTEM.md` — Component Catalog section                                        |
 | `src/app/globals.css` token changes               | `UI-SYSTEM.md` — Design Tokens section                                            |
-| New `.cursor/rules/*.mdc` file                    | `AGENT-WORKFLOW.md` — Before Coding section                                       |
+| New `AGENTS.md` or `.cursor/rules/*.mdc` file     | `AGENT-WORKFLOW.md` — Before Coding section                                       |
 | New npm script                                    | `AGENT-WORKFLOW.md` — Quick Commands table                                        |
+| New env var or changed env fallback               | `.env.example`, `README.md`, and relevant module doc                              |
+| New Supabase Storage bucket                       | `docs/modules/media.md` or owning module doc + deployment docs                    |
+| AI prompt/model/schema behavior changes           | Owning module doc + `DATA-CONTRACTS.md` if stored or externally observable        |
+| Route-local schema, `FormData`, or SSE route      | `DATA-CONTRACTS.md` route matrix + relevant pattern doc                           |
+| Module-owned audit trail                          | `docs/modules/audit.md` + owning module doc                                       |
 
 ## Staleness Checks
 
@@ -45,6 +50,7 @@ When working in a related area, agents should verify that doc claims match reali
 - **Code blocks** for type signatures (use `typescript` fence, keep signatures concise — field names and types, not full definitions).
 - **Headings** match the sections listed in this governance table. Don't rename section headings without updating this file.
 - **No duplication** across docs. Each fact has one canonical location. Cross-reference with markdown links (e.g., "See `docs/DATA-CONTRACTS.md`").
+- **Current behavior over intent.** If implementation has a known mismatch, document it as current behavior instead of smoothing it over.
 
 ## Ownership
 

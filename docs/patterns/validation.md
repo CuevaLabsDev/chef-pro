@@ -1,6 +1,8 @@
 # Pattern: Zod Validation
 
-All Zod schemas live in `src/lib/validations.ts`. Routes use `safeParse` to validate request bodies.
+Shared client/API Zod schemas live in `src/lib/validations.ts`. Routes use `safeParse` to validate JSON request bodies.
+
+Route-local schemas are allowed for route-only actions, such as a small status update that is not reused by a client form. Service-local schemas are allowed for AI structured-output validation, where the schema validates model output rather than user input. `FormData` upload routes may validate required fields/files manually and then enforce file constraints in the service layer.
 
 ## Naming Convention
 
@@ -99,8 +101,9 @@ export const replaceSubtypePermissionsSchema = z.object({
 
 ## Rules
 
-1. **All schemas in one file.** `src/lib/validations.ts` is the single location.
-2. **Name consistently.** Follow the naming table above.
+1. **Shared schemas in one file.** Put reusable API/client schemas in `src/lib/validations.ts`.
+2. **Use local schemas narrowly.** Route-local schemas are acceptable for route-only actions; service-local schemas are acceptable for AI structured output.
 3. **safeParse in routes.** Never throw from Zod in an API handler.
 4. **Coerce dates.** Use `z.coerce.date()` for date fields sent as ISO strings.
 5. **Reuse sub-schemas.** If items appear in both create and update, define the item schema once and reference it.
+6. **Validate uploads.** For `FormData`, check required string fields and `File` instances before delegating, and document MIME/size constraints in the owning service/module doc.

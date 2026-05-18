@@ -44,21 +44,19 @@ Add the new key to the `permissionKeys` array of relevant entries in `DEFAULT_SU
 
 Decide which subtypes should have this permission by default. FTE subtypes (`fte_chef`, `fte_ops`) typically get all permissions.
 
-## Step 3: Update Seed Data
-
-**File:** `prisma/seed.sql`
-
-Add a new `INSERT INTO "Permission"` row:
-
-```sql
-('perm_XX', 'domain.action', 'Human-Readable Name', 'Description', NOW()),
-```
-
-Add corresponding `INSERT INTO "RoleSubtypePermission"` rows for each subtype that should have this permission.
+## Step 3: Update Runtime Defaults And Seed Data
 
 **File:** `prisma/seed.ts`
 
-No changes needed -- it reads from `PERMISSION_CATALOG` and `DEFAULT_SUBTYPE_DEFINITIONS` dynamically.
+No direct change is usually needed -- it reads from `PERMISSION_CATALOG` and `DEFAULT_SUBTYPE_DEFINITIONS` dynamically.
+
+**File:** `src/modules/identity-access/service.ts`
+
+Update fallback role permissions if the permission should exist before subtype records are available.
+
+**Migration SQL**
+
+If the permission must deploy without immediately running seed, add an idempotent migration upsert for `Permission` and any default `RoleSubtypePermission` rows.
 
 ## Step 4: Apply to Database
 
@@ -78,9 +76,9 @@ Or re-run the full seed:
 npm run db:seed
 ```
 
-### Supabase
+### Supabase / Remote PostgreSQL
 
-Run the same INSERT in the Supabase SQL Editor.
+Apply the Prisma migration to the target PostgreSQL database, then run seed if needed. Avoid manual SQL that diverges from migration/seed definitions.
 
 ## Step 5: Use in Route Guard
 
@@ -113,8 +111,10 @@ npm test
 
 - [ ] Added to `PERMISSION_CATALOG` in `rbac-config.ts`
 - [ ] Added to relevant subtypes in `DEFAULT_SUBTYPE_DEFINITIONS`
-- [ ] Added to `prisma/seed.sql`
+- [ ] Added to fallback role permissions if needed
+- [ ] Added to migration seed/upsert SQL if deployment requires it
 - [ ] Applied to local database
-- [ ] Applied to Supabase (when network available)
+- [ ] Applied to remote PostgreSQL/Supabase through Prisma migration or seed
 - [ ] Used in route guard
+- [ ] `docs/domain-model.md` and `docs/modules/identity-access.md` updated
 - [ ] TypeScript compiles

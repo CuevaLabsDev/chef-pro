@@ -24,9 +24,9 @@ Make your changes. Follow existing conventions:
 
 ## Step 2: Write Migration SQL
 
-**File:** `prisma/migration.sql` (append or create a new versioned file)
+**File:** `prisma/migrations/<timestamp>_<name>/migration.sql`
 
-Write the raw SQL for the change. This is what gets applied to both local and Supabase databases.
+Write the Prisma migration SQL for the application schema change. This gets applied to whichever PostgreSQL database `DATABASE_URL` targets, including local PostgreSQL or Supabase Postgres.
 
 ### Adding a column
 
@@ -109,9 +109,11 @@ Update any schemas that correspond to the changed model:
 
 If the change adds required columns to seeded tables, update the seed files to include values for the new columns.
 
-## Step 8: Apply to Supabase
+## Step 8: Apply Remote / Supabase Changes
 
-When network access is available, run the same SQL from Step 2 in the Supabase SQL Editor.
+For Supabase Postgres, apply the Prisma migration through the Prisma CLI against the Supabase `DATABASE_URL`. The `supabase/migrations/` tree is for Supabase-specific SQL, such as storage bucket setup and some historical DB SQL; do not assume every Prisma migration has a matching Supabase migration.
+
+If the schema change adds or changes a Supabase Storage bucket, add a separate idempotent SQL file under `supabase/migrations/`.
 
 ## Step 9: Verify
 
@@ -132,7 +134,7 @@ If the schema change introduces a new entity or significantly changes an existin
 ## Checklist
 
 - [ ] Schema edited in `prisma/schema.prisma`
-- [ ] Migration SQL written
+- [ ] Prisma migration SQL written
 - [ ] Applied to local PostgreSQL
 - [ ] Prisma client regenerated
 - [ ] Affected services updated
@@ -140,4 +142,5 @@ If the schema change introduces a new entity or significantly changes an existin
 - [ ] Seed data updated
 - [ ] All checks pass (generate, typecheck, lint, test)
 - [ ] Domain model docs updated (if significant change)
-- [ ] Supabase SQL applied (when network available)
+- [ ] Remote/Supabase PostgreSQL migration applied when relevant
+- [ ] Supabase-specific storage/bucket SQL added and applied when relevant

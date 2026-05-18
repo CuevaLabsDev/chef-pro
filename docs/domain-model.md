@@ -42,6 +42,34 @@
 | PacketReviewSignature | A typed review signature on a packet                                 |
 | PacketAmendment       | A tracked change request on a packet (item swap, backup, correction) |
 
+### Daily Counts
+
+| Entity             | Purpose                                   |
+| ------------------ | ----------------------------------------- |
+| CountSheetTemplate | Location/period count sheet configuration |
+| CountSheetSection  | Ordered section with configured fields    |
+| DailyCountSheet    | Dated count sheet for one template        |
+| DailyCountEntry    | Values for one section on one sheet       |
+
+### AI Agents
+
+| Entity          | Purpose                                  |
+| --------------- | ---------------------------------------- |
+| AiChatSession   | User-owned AI assistant conversation     |
+| AiChatMessage   | User/model message within a chat session |
+| AiInsightReport | Saved AI-generated operational report    |
+
+### Operational Compliance
+
+| Entity                | Purpose                                                 |
+| --------------------- | ------------------------------------------------------- |
+| OperationalAudit      | AI-assisted closing or temperature-log audit            |
+| OperationalAuditAsset | Private Supabase source/generated file metadata         |
+| ClosingPhoto          | Categorized closing-photo assessment                    |
+| TemperatureLog        | Extracted source log and generated PDF archive metadata |
+| TemperatureEntry      | Structured extracted temperature check                  |
+| ComplianceIssue       | AI-assisted potential issue needing manager review      |
+
 ### Cross-Cutting
 
 | Entity            | Purpose                             |
@@ -61,7 +89,9 @@ Campus
               ├── UserLocationAccess (many:many with User)
               ├── DeadlineRule (1:many, one per TastingPeriod)
               ├── TastingSession (1:many)
-              └── MenuSignagePacket (1:many)
+              ├── MenuSignagePacket (1:many)
+              ├── CountSheetTemplate (1:many)
+              └── OperationalAudit (1:many)
 
 User
   ├── RoleSubtype (many:1, optional)
@@ -70,7 +100,10 @@ User
   ├── UserPermissionOverride (1:many)
   ├── PushSubscription (1:many)
   ├── TastingSession (1:many, as chef)
-  └── MenuSignagePacket (1:many, as creator/assigned/publisher/reviewer/finalizer)
+  ├── MenuSignagePacket (1:many, as creator/assigned/publisher/reviewer/finalizer)
+  ├── DailyCountSheet (1:many, as submitter/amender)
+  ├── AiChatSession / AiInsightReport (1:many)
+  └── OperationalAudit / OperationalAuditAsset / ComplianceIssue (1:many by submit/upload/resolve role)
 
 TastingSession
   ├── TastingItem (1:many)
@@ -83,6 +116,22 @@ MenuSignagePacket
   ├── PacketReviewSignature (1:many)
   └── PacketAmendment (1:many)
         └── MenuSignageItem (many:1, optional — the item being amended)
+
+CountSheetTemplate
+  ├── CountSheetSection (1:many)
+  └── DailyCountSheet (1:many)
+        └── DailyCountEntry (1:many)
+              └── CountSheetSection (many:1)
+
+AiChatSession
+  └── AiChatMessage (1:many)
+
+OperationalAudit
+  ├── OperationalAuditAsset (1:many)
+  ├── ClosingPhoto (1:many)
+  ├── TemperatureLog (1:1 optional)
+  │     └── TemperatureEntry (1:many)
+  └── ComplianceIssue (1:many)
 ```
 
 ## State Machines
@@ -186,28 +235,49 @@ fte_ops (rank 110)          ← root
 Reporting at a location is resolved by walking up from the user's rank to
 the nearest higher-ranked user assigned to that location.
 
-### Permission Keys (18 total)
+### Permission Keys (26 total)
 
-| Key                        | Domain             |
-| -------------------------- | ------------------ |
-| `tastings.create`          | Tasting capture    |
-| `tastings.edit`            | Tasting capture    |
-| `tastings.submit`          | Tasting capture    |
-| `tastings.view_all`        | Tasting capture    |
-| `config.manage`            | Configuration      |
-| `reviews.manage`           | Review compliance  |
-| `reviews.unlock`           | Review compliance  |
-| `reports.view`             | Reporting          |
-| `notifications.view`       | Notifications      |
-| `packets.read`             | Menu signage       |
-| `packets.manage_structure` | Menu signage       |
-| `packets.execute`          | Menu signage       |
-| `packets.override`         | Menu signage       |
-| `packets.publish`          | Menu signage       |
-| `packets.finalize_service` | Menu signage       |
-| `kitchen_admins.manage`    | Kitchen admin team |
-| `kitchen_admins.view_as`   | Kitchen admin team |
-| `permissions.manage`       | Identity access    |
+| Key                         | Domain                 |
+| --------------------------- | ---------------------- |
+| `tastings.create`           | Tasting capture        |
+| `tastings.edit`             | Tasting capture        |
+| `tastings.submit`           | Tasting capture        |
+| `tastings.view_all`         | Tasting capture        |
+| `config.manage`             | Configuration          |
+| `reviews.manage`            | Review compliance      |
+| `reviews.unlock`            | Review compliance      |
+| `reports.view`              | Reporting / AI nav     |
+| `notifications.view`        | Notifications          |
+| `packets.read`              | Menu signage           |
+| `packets.manage_structure`  | Menu signage           |
+| `packets.execute`           | Menu signage           |
+| `packets.override`          | Menu signage           |
+| `packets.publish`           | Menu signage           |
+| `packets.finalize_service`  | Menu signage           |
+| `packets.request_amendment` | Menu signage           |
+| `packets.resolve_amendment` | Menu signage           |
+| `kitchen_admins.manage`     | Kitchen admin team     |
+| `kitchen_admins.view_as`    | Kitchen admin team     |
+| `permissions.manage`        | Identity access        |
+| `counts.configure`          | Daily counts           |
+| `counts.record`             | Daily counts           |
+| `counts.view`               | Daily counts           |
+| `compliance.record`         | Operational compliance |
+| `compliance.view`           | Operational compliance |
+| `compliance.manage`         | Operational compliance |
+
+### Operational Compliance Permission Defaults
+
+| Role/Subtype group          | Compliance permissions                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| FTE Ops / FTE Chef          | `compliance.record`, `compliance.view`, `compliance.manage` through `ALL_PERMISSION_KEYS` |
+| Ops                         | `compliance.record`, `compliance.view`, `compliance.manage`                               |
+| Assistant Ops               | `compliance.view`                                                                         |
+| Executive Chef              | `compliance.record`, `compliance.view`                                                    |
+| Sr. Sous / Sous / Jr. Sous  | `compliance.record`                                                                       |
+| FOH Manager / Assistant FOH | `compliance.record`                                                                       |
+
+Prisma migration SQL also upserts compliance permissions for deployment safety. Check `PERMISSION_CATALOG`, fallback role permissions, subtype defaults, and migration inserts together before changing this list.
 
 ## Soft Delete Convention
 

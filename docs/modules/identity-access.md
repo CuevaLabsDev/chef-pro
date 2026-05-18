@@ -22,7 +22,7 @@
 
 - **`EffectiveUserContext`** -- The resolved user with computed `permissionKeys[]`. This is what route handlers receive from `requireAuth()`.
 - **`SessionUser`** -- Subset stored in the JWT: id, email, name, role, roleSubtypeId, roleLabel, locationIds, permissionKeys.
-- **`PermissionKey`** -- Union type of all 18 permission key strings, derived from `PERMISSION_CATALOG`.
+- **`PermissionKey`** -- Union type of all 26 permission key strings, derived from `PERMISSION_CATALOG`.
 
 ## Service Exports
 
@@ -84,13 +84,31 @@
 
 ## RBAC Config
 
-**`PERMISSION_CATALOG`**: Array of 18 permission objects with `key`, `name`, `description`.
+**`PERMISSION_CATALOG`**: Array of 26 permission objects with `key`, `name`, `description`.
 
 **`DEFAULT_SUBTYPE_DEFINITIONS`**: Array of 10 subtype objects with `role`, `code`, `label`, `permissionKeys[]`.
 
 **`ALL_PERMISSION_KEYS`**: Flat array of all permission key strings.
 
 See `domain-model.md` for the full permission key list and 3-layer resolution logic.
+
+Operational-compliance keys:
+
+| Key                 | Purpose                                                                   |
+| ------------------- | ------------------------------------------------------------------------- |
+| `compliance.record` | Upload closing photos and temperature log evidence for assigned locations |
+| `compliance.view`   | View AI-assisted closing verification and temperature log audits          |
+| `compliance.manage` | Reanalyze audits and update AI-assisted compliance issue status           |
+
+Daily-count keys:
+
+| Key                | Purpose                                            |
+| ------------------ | -------------------------------------------------- |
+| `counts.configure` | Manage count sheet templates                       |
+| `counts.record`    | Create, edit, submit, and amend daily count sheets |
+| `counts.view`      | View daily count history and summaries             |
+
+When changing permissions, update all four sources of truth together: `PERMISSION_CATALOG`, fallback role permissions in `service.ts`, `DEFAULT_SUBTYPE_DEFINITIONS`, and any deployment migration seed/upsert SQL.
 
 ## API Routes That Consume This Module
 

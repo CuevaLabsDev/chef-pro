@@ -5,26 +5,29 @@ It maps common tasks to the docs you must read before writing code.
 
 ## Task Routing
 
-| When the task involves...            | Read these docs (in order)                                           |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| Adding a new feature end-to-end      | `workflows/add-feature.md` then the relevant `modules/<name>.md`     |
-| Adding or modifying an API route     | `patterns/api-route.md` then `workflows/add-api-route.md`            |
-| Adding a service function            | `patterns/service-function.md` then the relevant `modules/<name>.md` |
-| Adding or changing a Zod schema      | `patterns/validation.md`                                             |
-| Writing or updating tests            | `patterns/testing.md`                                                |
-| Client-side data fetching / mutation | `patterns/client-data.md`                                            |
-| Changing the Prisma schema           | `workflows/modify-schema.md` then `domain-model.md`                  |
-| Adding a new RBAC permission         | `workflows/add-permission.md` then `modules/identity-access.md`      |
-| Adding a new domain event            | `workflows/add-domain-event.md` then `modules/events.md`             |
-| Understanding the architecture       | `architecture.md`                                                    |
-| Understanding domain rules           | `domain-model.md`                                                    |
+| When the task involves...                | Read these docs (in order)                                           |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| Adding a new feature end-to-end          | `workflows/add-feature.md` then the relevant `modules/<name>.md`     |
+| Adding or modifying an API route         | `patterns/api-route.md` then `workflows/add-api-route.md`            |
+| Adding a service function                | `patterns/service-function.md` then the relevant `modules/<name>.md` |
+| Adding or changing a Zod schema          | `patterns/validation.md`                                             |
+| Writing or updating tests                | `patterns/testing.md`                                                |
+| Client-side data fetching / mutation     | `patterns/client-data.md`                                            |
+| Changing the Prisma schema               | `workflows/modify-schema.md` then `domain-model.md`                  |
+| Adding a new RBAC permission             | `workflows/add-permission.md` then `modules/identity-access.md`      |
+| Adding a new domain event                | `workflows/add-domain-event.md` then `modules/events.md`             |
+| AI assistants, Gemini, tools, or chat    | `modules/ai-agents.md` then `DATA-CONTRACTS.md`                      |
+| Closing photos or temperature-log audits | `modules/operational-compliance.md` then `DATA-CONTRACTS.md`         |
+| Daily count sheets                       | `modules/daily-counts.md` then `DATA-CONTRACTS.md`                   |
+| Understanding the architecture           | `ARCHITECTURE.md`                                                    |
+| Understanding domain rules               | `domain-model.md`                                                    |
 
 ## Doc Map
 
 ```
 docs/
   AGENT-INDEX.md              <-- you are here
-  architecture.md             -- module map, layering, data flow
+  ARCHITECTURE.md             -- module map, layering, data flow
   domain-model.md             -- entities, state machines, RBAC
 
   patterns/
@@ -37,9 +40,12 @@ docs/
   modules/
     identity-access.md        -- auth, RBAC, middleware
     tasting-capture.md        -- session CRUD, submit flow
-    review-compliance.md      -- status transitions
+    review-compliance.md      -- tasting status transitions
     configuration.md          -- campuses, locations, periods, deadlines, schemas
     menu-signage.md           -- packet structure vs execution
+    daily-counts.md           -- count sheet templates, entries, amendments
+    ai-agents.md              -- Gemini agents, tools, chat sessions, reports
+    operational-compliance.md -- closing verification, temperature logs, audit assets
     notifications.md          -- channels, send patterns
     audit.md                  -- audit event contract
     media.md                  -- Supabase storage

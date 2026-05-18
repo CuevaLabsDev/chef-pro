@@ -116,6 +116,21 @@ export const PERMISSION_CATALOG = [
     name: "View Daily Counts",
     description: "View daily count history and summaries.",
   },
+  {
+    key: "compliance.record",
+    name: "Record Compliance Evidence",
+    description: "Upload closing photos and temperature log evidence for assigned locations.",
+  },
+  {
+    key: "compliance.view",
+    name: "View Compliance Audits",
+    description: "View AI-assisted closing verification and temperature log audits.",
+  },
+  {
+    key: "compliance.manage",
+    name: "Manage Compliance Audits",
+    description: "Reanalyze audits and update AI-assisted compliance issue status.",
+  },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_CATALOG)[number]["key"];
@@ -140,6 +155,7 @@ const chefBasePermissions: PermissionKey[] = [
   "packets.read",
   "packets.execute",
   "packets.request_amendment",
+  "compliance.record",
 ];
 
 const executiveChefPermissions: PermissionKey[] = [
@@ -147,6 +163,7 @@ const executiveChefPermissions: PermissionKey[] = [
   "tastings.view_all",
   "reviews.manage",
   "reports.view",
+  "compliance.view",
 ];
 
 const opsBasePermissions: PermissionKey[] = [
@@ -158,6 +175,9 @@ const opsBasePermissions: PermissionKey[] = [
   "notifications.view",
   "packets.read",
   "packets.override",
+  "compliance.record",
+  "compliance.view",
+  "compliance.manage",
 ];
 
 const assistantOpsPermissions: PermissionKey[] = [
@@ -167,6 +187,7 @@ const assistantOpsPermissions: PermissionKey[] = [
   "notifications.view",
   "packets.read",
   "packets.override",
+  "compliance.view",
 ];
 
 export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
@@ -253,6 +274,7 @@ export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
       "counts.configure",
       "counts.record",
       "counts.view",
+      "compliance.record",
     ],
   },
   {
@@ -261,7 +283,7 @@ export const DEFAULT_SUBTYPE_DEFINITIONS: DefaultSubtypeDefinition[] = [
     label: "Assistant FOH",
     rank: 60,
     parentSubtypeCode: "foh_manager",
-    permissionKeys: ["packets.read", "counts.record", "counts.view"],
+    permissionKeys: ["packets.read", "counts.record", "counts.view", "compliance.record"],
   },
 
   // Kitchen Admin tier (rank 70–75)

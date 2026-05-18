@@ -33,8 +33,15 @@ type UserWithContext = Prisma.UserGetPayload<{
 }>;
 
 const fallbackRolePermissions: Record<Role, PermissionKey[]> = {
-  chef: ["tastings.create", "tastings.edit", "tastings.submit", "packets.read", "packets.execute"],
-  foh: ["packets.read"],
+  chef: [
+    "tastings.create",
+    "tastings.edit",
+    "tastings.submit",
+    "packets.read",
+    "packets.execute",
+    "compliance.record",
+  ],
+  foh: ["packets.read", "compliance.record"],
   kitchen_admin: [
     "packets.read",
     "packets.manage_structure",
@@ -56,6 +63,9 @@ const fallbackRolePermissions: Record<Role, PermissionKey[]> = {
     "notifications.view",
     "packets.read",
     "packets.override",
+    "compliance.record",
+    "compliance.view",
+    "compliance.manage",
   ],
   fte: ALL_PERMISSION_KEYS,
 };

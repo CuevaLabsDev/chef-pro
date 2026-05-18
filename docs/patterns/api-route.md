@@ -69,9 +69,18 @@ export async function POST(req: NextRequest) {
 3. **Permission check.** Use `hasPermission(user, key)` for fine-grained checks after auth.
 4. **Validate input.** Use `safeParse` (not `parse`) so you control the error response.
 5. **Call service.** Never write Prisma queries in a route handler. Always delegate to a service function.
-6. **Audit.** Call `createAuditEvent()` after successful writes. Use `.catch(() => {})` to fire-and-forget.
+6. **Audit.** Call `createAuditEvent()` after successful writes unless the owning module documents a module-owned audit trail. Use `.catch(() => {})` to fire-and-forget.
 7. **Error mapping.** Wrap service calls in try/catch and return `handleServiceError(err)`.
 8. **No business logic.** Routes are thin controllers. All rules, validation beyond schema shape, and data transformations belong in the service layer.
+
+## Current Route Variants
+
+| Variant                  | Pattern                                                                                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| JSON body                | Use shared or route-local Zod schema and `safeParse`.                                                                  |
+| `FormData` upload        | Use `await req.formData()`, validate required fields/files in the route, and let the service enforce file constraints. |
+| Server-sent events       | Return `text/event-stream`; document every emitted event `type` in `DATA-CONTRACTS.md`.                                |
+| Module-owned audit trail | If the module owns specialized audit records, document that exception in the module doc and `docs/modules/audit.md`.   |
 
 ## Dynamic Route Segments
 

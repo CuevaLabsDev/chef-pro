@@ -5,7 +5,7 @@ Do not skip steps. Each step references the pattern or module doc to follow.
 
 ## Pre-Work
 
-- [ ] Read `docs/architecture.md` to understand where the feature fits.
+- [ ] Read `docs/ARCHITECTURE.md` to understand where the feature fits.
 - [ ] Identify which module owns this feature (see `docs/modules/`).
 - [ ] Read that module's doc to understand its current exports, dependencies, and side effects.
 
@@ -29,10 +29,10 @@ Add any new interfaces, input types, or enums the feature needs. Follow existing
 
 ## Step 3: Add Zod Schema
 
-**File:** `src/lib/validations.ts`
+**File:** `src/lib/validations.ts` for shared schemas, or route/service-local schema for narrow route-only or AI-output validation
 **Pattern:** `docs/patterns/validation.md`
 
-- Name the schema following conventions: `create<Entity>Schema`, `update<Entity>Schema`.
+- Name shared schemas following conventions: `create<Entity>Schema`, `update<Entity>Schema`.
 - Use `z.coerce.date()` for date fields.
 - Use `.optional()` for omittable fields, `.nullable()` for explicitly-null fields.
 - Reuse existing sub-schemas where possible.
@@ -43,9 +43,9 @@ Add any new interfaces, input types, or enums the feature needs. Follow existing
 **Pattern:** `docs/patterns/api-route.md`
 
 - Start with `requireAuth()` or `requirePermission()`.
-- Validate input with `safeParse`.
+- Validate JSON input with `safeParse`; validate `FormData` fields/files explicitly.
 - Call the service function from Step 2.
-- Add audit event (fire-and-forget) after successful writes.
+- Add audit coverage after successful writes: generic `AuditEvent`, domain event subscriber, transaction audit row, or documented module-owned audit trail.
 - Wrap in try/catch with `handleServiceError`.
 
 ## Step 5: Add Domain Event (if needed)
@@ -58,11 +58,12 @@ Only needed if the feature involves a meaningful state change that other modules
 
 **Reference:** `docs/modules/audit.md`
 
-Every create/update/delete must produce an audit event. Choose one approach:
+Every create/update/delete must produce audit coverage. Choose one approach:
 
 - **Direct:** Call `createAuditEvent()` in the API route (fire-and-forget).
 - **Via event subscriber:** If a domain event is published, add an audit subscriber.
 - **Inside transaction:** For atomic flows, create the audit event in the `$transaction`.
+- **Module-owned audit trail:** If the feature creates specialized audit/evidence records, document the exception in `docs/modules/audit.md` and the module doc.
 
 ## Step 7: Add Permission (if needed)
 
@@ -83,6 +84,7 @@ If this feature requires a new permission key, follow the RBAC addition flow bef
 - **Page:** `src/app/<role-section>/<page>/page.tsx`
 - **Component:** `src/components/<role>/` or `src/components/shared/`
 - **Data fetching:** Use `useApi` for reads, `useMutation` for writes (see `docs/patterns/client-data.md`).
+- **Uploads/streams:** Use direct `fetch` for `FormData` uploads or SSE streams and document emitted event types.
 - **Permission guard:** Layout files check permissions before rendering.
 
 ## Step 10: Verify
@@ -94,3 +96,10 @@ npm test
 ```
 
 Fix any failures before considering the feature complete.
+
+## Documentation Checklist
+
+- [ ] `DATA-CONTRACTS.md` updated for models, module types, validation source, route matrix, statuses, and events/SSE.
+- [ ] Relevant module doc updated for workflows, permissions, storage, side effects, and known limitations.
+- [ ] `ARCHITECTURE.md` updated for new modules, portals, shared infrastructure, or deployment behavior.
+- [ ] `UI-SYSTEM.md` updated for new layout/component/status patterns.

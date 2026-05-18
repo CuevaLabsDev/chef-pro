@@ -55,3 +55,6 @@ chefpro.db*
 
 # uploads (legacy local storage)
 /public/uploads
+
+# Supabase local link/cache metadata
+/supabase/.temp/
