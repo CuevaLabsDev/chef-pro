@@ -24,6 +24,8 @@ import {
   Package,
   BarChart3,
   Activity,
+  Bot,
+  ArrowRight,
 } from "lucide-react";
 
 interface Session {
@@ -365,6 +367,23 @@ export default function OpsDashboard() {
           )}
         </Card>
       </div>
+
+      <Link href="/ops/ai-assistant">
+        <Card className="p-4 hover:border-primary/40 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+              <Bot className="size-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-sm">AI Assistant</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Ask about tasting trends, menu packets, or compliance · Powered by Gemini
+              </p>
+            </div>
+            <ArrowRight className="size-4 text-muted-foreground" />
+          </div>
+        </Card>
+      </Link>
 
       <Card className="p-4">
         <CardTitle className="text-sm font-medium text-muted-foreground mb-4">

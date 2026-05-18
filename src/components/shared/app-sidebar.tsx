@@ -29,6 +29,7 @@ import {
   Settings,
   Utensils,
   ClipboardList,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -159,6 +160,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { href: "/ops/reports", label: "Reports", icon: BarChart3, permissionKey: "reports.view" },
+  { href: "/ops/ai-assistant", label: "AI Assistant", icon: Bot, permissionKey: "reports.view" },
   {
     label: "System",
     icon: Shield,
