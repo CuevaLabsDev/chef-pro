@@ -7,10 +7,16 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createClient(): PrismaClient {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 1,
+    idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 10_000,
+  });
   return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
 export const prisma = globalForPrisma.prisma ?? createClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Reuse one client per serverless instance (avoids exhausting Supabase pool limits).
+globalForPrisma.prisma = prisma;

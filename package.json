@@ -18,6 +18,7 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
+    "db:setup-prod": "npx tsx scripts/setup-production-db.ts",
     "job:check-deadlines": "npx tsx scripts/check-deadlines.ts"
   },
   "dependencies": {

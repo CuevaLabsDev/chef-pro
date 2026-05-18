@@ -5,6 +5,7 @@ import { prisma } from "./db";
 import { getUserContextById } from "@/modules/identity-access/service";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
