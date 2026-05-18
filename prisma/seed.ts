@@ -11,6 +11,7 @@ import {
   DEFAULT_SUBTYPE_DEFINITIONS,
   PERMISSION_CATALOG,
 } from "../src/modules/identity-access/rbac-config";
+import { seedDemoData } from "./seed-demo-data";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
@@ -263,6 +264,8 @@ async function main() {
     },
   });
   console.log("  User: exec.chef@chefpro.demo (chef/executive)");
+
+  await seedDemoData(prisma);
 
   console.log("\nSeed complete!");
   await prisma.$disconnect();

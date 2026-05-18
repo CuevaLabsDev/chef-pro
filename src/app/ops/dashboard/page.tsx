@@ -392,15 +392,15 @@ export default function OpsDashboard() {
         {sessions.length === 0 ? (
           <p className="text-muted-foreground text-sm mt-3">No tastings recorded today yet</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="max-h-96 overflow-y-auto overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 font-medium">Location</th>
-                  <th className="pb-2 font-medium">Period</th>
-                  <th className="pb-2 font-medium">Chef</th>
-                  <th className="pb-2 font-medium">Items</th>
-                  <th className="pb-2 font-medium">Status</th>
+                <tr className="border-b text-left text-muted-foreground sticky top-0 z-10 bg-card">
+                  <th className="pb-2 font-medium bg-card">Location</th>
+                  <th className="pb-2 font-medium bg-card">Period</th>
+                  <th className="pb-2 font-medium bg-card">Chef</th>
+                  <th className="pb-2 font-medium bg-card">Items</th>
+                  <th className="pb-2 font-medium bg-card">Status</th>
                 </tr>
               </thead>
               <tbody>
