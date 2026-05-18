@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,12 @@ export function InsightCard({ report }: { report: InsightReport }) {
     <Card className="gap-3">
       <CardContent className="px-4 py-3 space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <div className={cn("flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium", config?.color)}>
+          <div
+            className={cn(
+              "flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
+              config?.color
+            )}
+          >
             {config?.icon}
             {config?.label ?? report.type}
           </div>
@@ -57,9 +63,9 @@ export function InsightCard({ report }: { report: InsightReport }) {
           </span>
         </div>
 
-        <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-          {expanded ? report.content : preview}
-          {!expanded && isLong && <span className="text-muted-foreground">...</span>}
+        <div className="prose prose-sm dark:prose-invert max-w-none text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+          <ReactMarkdown>{expanded ? report.content : preview}</ReactMarkdown>
+          {!expanded && isLong && <span className="text-muted-foreground text-sm">...</span>}
         </div>
 
         {isLong && (
